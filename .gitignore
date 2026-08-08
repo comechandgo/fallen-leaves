@@ -1,0 +1,48 @@
+# ========== Unity 通用忽略 ==========
+# 编译生成文件
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Uu]ser[Ss]ettings/
+
+# 缓存和日志
+*.csproj
+*.sln
+*.userprefs
+*.unityproj
+*.booproj
+*.pidb
+*.suo
+*.user
+*.bak
+*.tmp
+*.log
+*.cache
+*.tmp
+
+# 特定 IDE
+.vs/
+.idea/
+*.swp
+*.swo
+
+# Unity 自动生成
+/Assets/AssetStoreTools*
+/Assets/Plugins/Android/libs/
+/Assets/Plugins/Android/res/
+
+# 包管理缓存
+/Packages/packages-lock.json   
+
+# ========== 用户指定忽略 ==========
+tree.py
+汇总.txt               
+Windy.txt              
+*.pdf                  # 字体授权声明等
+
+# ========== 操作系统垃圾 ==========
+.DS_Store
+Thumbs.db
+desktop.ini
