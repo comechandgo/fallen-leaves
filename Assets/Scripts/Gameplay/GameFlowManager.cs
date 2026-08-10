@@ -9,7 +9,7 @@ public class GameFlowManager : MonoBehaviour
     public enum GameState { MainMenu, LevelSelect, Playing, Result }
 
     private GameState state = GameState.MainMenu;
-    private GameSceneBuilder.LevelSize selectedLevel = GameSceneBuilder.LevelSize.SimpleSmall;
+    private LevelId selectedLevel = LevelId.SimpleSmall;
 
     private float elapsedTime;
     private float timeLimitSeconds;
@@ -143,10 +143,10 @@ public class GameFlowManager : MonoBehaviour
             {
                 float deltaTime = Time.unscaledDeltaTime;
                 elapsedTime += deltaTime;
-                GameSceneBuilder.Tick(deltaTime);
+                LevelLoader.Tick(deltaTime);
             }
 
-            if (GameSceneBuilder.IsGameplayClear()) EndGame(true);
+            if (LevelLoader.IsGameplayClear()) EndGame(true);
             else if (IsTimedChallengeFailed()) EndGame(false);
         }
         else
@@ -244,19 +244,26 @@ public class GameFlowManager : MonoBehaviour
             && RiverCollector.CoinCount >= UpgradeCatalog.GetNextCost(kind, level);
     }
 
-    private void StartLevel(GameSceneBuilder.LevelSize levelSize)
+    private void StartLevel(LevelId levelId)
     {
         Time.timeScale = 1f;
-        selectedLevel = levelSize;
+        selectedLevel = levelId;
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
 
-        ApplyRuntimeUpgrades();
         RiverCollector.ResetSession();
-        GameSceneBuilder.BuildLevel(levelSize);
-        timeLimitSeconds = GameSceneBuilder.CurrentTimeLimitSeconds;
+        windBlower = null;
+        LevelRoot loadedLevel = LevelLoader.Load(levelId);
+        if (loadedLevel == null)
+        {
+            timeLimitSeconds = 0f;
+            state = GameState.LevelSelect;
+            router.Show(UIRouter.State.LevelSelect);
+            return;
+        }
 
-        windBlower = Object.FindFirstObjectByType<WindBlower>();
+        timeLimitSeconds = loadedLevel.TimeLimitSeconds;
+        windBlower = loadedLevel.WindBlower;
         ApplyRuntimeUpgrades();
         elapsedTime = 0f;
         resultSucceeded = true;
@@ -282,7 +289,8 @@ public class GameFlowManager : MonoBehaviour
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
 
-        GameSceneBuilder.ClearGameplayObjects();
+        LevelLoader.Unload();
+        windBlower = null;
         timeLimitSeconds = 0f;
         resultSucceeded = true;
         state = GameState.LevelSelect;
@@ -295,7 +303,8 @@ public class GameFlowManager : MonoBehaviour
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
 
-        GameSceneBuilder.ClearGameplayObjects();
+        LevelLoader.Unload();
+        windBlower = null;
         timeLimitSeconds = 0f;
         resultSucceeded = true;
         state = GameState.MainMenu;
@@ -330,7 +339,7 @@ public class GameFlowManager : MonoBehaviour
 
     private WindBlower GetWindBlower()
     {
-        if (windBlower == null) windBlower = Object.FindFirstObjectByType<WindBlower>();
+        if (windBlower == null) windBlower = LevelLoader.CurrentWindBlower;
         return windBlower;
     }
 

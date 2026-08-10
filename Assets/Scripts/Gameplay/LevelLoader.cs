@@ -14,6 +14,7 @@ public static class LevelLoader
     public static LevelRoot Load(LevelId id)
     {
         Unload();
+        ConfigurePhysics();
 
         if (catalog == null)
         {
@@ -56,6 +57,21 @@ public static class LevelLoader
     public static bool IsGameplayClear()
     {
         return current != null && current.IsGameplayClear;
+    }
+
+    private static void ConfigurePhysics()
+    {
+        Physics2D.gravity = Vector2.zero;
+
+        int leafLayer = LayerMask.NameToLayer("Leaf");
+        int obstacleLayer = LayerMask.NameToLayer("Obstacle");
+        if (leafLayer < 0) return;
+
+        Physics2D.IgnoreLayerCollision(leafLayer, leafLayer, true);
+        if (obstacleLayer >= 0)
+        {
+            Physics2D.IgnoreLayerCollision(leafLayer, obstacleLayer, false);
+        }
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

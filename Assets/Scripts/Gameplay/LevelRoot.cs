@@ -30,8 +30,12 @@ public sealed class LevelRoot : MonoBehaviour
 
     public LevelId Id => levelId;
     public Rect MapBounds => mapBounds;
+    public int InitialLeafCount => initialLeafCount;
     public float TimeLimitSeconds => timeLimitSeconds;
     public bool Endless => endless;
+    public int EndlessSpawnBatch => endlessSpawnBatch;
+    public float EndlessSpawnInterval => endlessSpawnInterval;
+    public int EndlessMaxLeaves => endlessMaxLeaves;
     public WindBlower WindBlower => windBlower;
     public int ActiveLeafCount => leafSpawner != null ? leafSpawner.ActiveCount : 0;
     public bool IsGameplayClear => !endless && initialized && ActiveLeafCount == 0;
