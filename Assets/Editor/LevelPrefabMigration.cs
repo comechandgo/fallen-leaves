@@ -476,6 +476,7 @@ public static class LevelPrefabMigration
 
         LineRenderer bank = CreateLineRenderer(root.transform, "Bank", bankMaterial, 2);
         LineRenderer water = CreateLineRenderer(root.transform, "Water", waterMaterial, 3);
+        water.gameObject.AddComponent<WaterFlow>();
         river.Configure(
             new[] { new Vector2(-10f, 0f), new Vector2(10f, 0f) },
             20f,
@@ -556,6 +557,7 @@ public static class LevelPrefabMigration
 
         RiverWaterMask mask = root.AddComponent<RiverWaterMask>();
         mask.Configure(renderer, renderer.sprite.texture);
+        root.AddComponent<RiverFlowOverlay>();
         RiverCollector collector = root.AddComponent<RiverCollector>();
         collector.SetWaterMask(mask);
         return SaveBasePrefab(root, $"{PrefabRoot}/Water/{name}.prefab");

@@ -155,6 +155,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4082222024884896117}
   - component: {fileID: 7455112820917468479}
+  - component: {fileID: 4068084930283674113}
   m_Layer: 0
   m_Name: Water
   m_TagString: Untagged
@@ -290,6 +291,19 @@ LineRenderer:
   m_UseWorldSpace: 0
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
+--- !u!114 &4068084930283674113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4622405316654196602}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0154cfabc93c21498d262a065dd9497, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: 0.18
 --- !u!1 &4818614325169499938
 GameObject:
   m_ObjectHideFlags: 0

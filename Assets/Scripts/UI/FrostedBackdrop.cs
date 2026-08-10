@@ -23,7 +23,8 @@ public class FrostedBackdrop : MonoBehaviour
         if (image == null) image = GetComponent<RawImage>();
 
         Camera camera = Camera.main;
-        if (camera == null)
+        if (camera == null
+            || SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
         {
             image.texture = RuntimeArt.LoadTexture("ggj/暂停/bg_blak.png");
             return;

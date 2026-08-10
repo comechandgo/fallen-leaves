@@ -1,6 +1,6 @@
 using UnityEngine;
 
-// 水面 UV 沿河流动画。挂在带 MeshRenderer 的水对象上。
+// 水面 UV 沿河流动画。支持 MeshRenderer 和 LineRenderer。
 public class WaterFlow : MonoBehaviour
 {
     [SerializeField] private float speed = 0.18f;
@@ -9,7 +9,7 @@ public class WaterFlow : MonoBehaviour
 
     private void Awake()
     {
-        MeshRenderer renderer = GetComponent<MeshRenderer>();
+        Renderer renderer = GetComponent<Renderer>();
         if (renderer == null) return;
         // 复制一份材质，避免污染共享资源 / 跨场景残留。
         runtimeMaterial = new Material(renderer.sharedMaterial);
