@@ -83,6 +83,12 @@ public class RiverCollector : MonoBehaviour
         CoinCount += leafValue;
         SessionCoins += leafValue;
 
+        LeafLifecycle lifecycle = windable.GetComponent<LeafLifecycle>();
+        if (lifecycle != null)
+        {
+            lifecycle.MarkCollected();
+        }
+
         Destroy(windable.gameObject);
     }
 }
