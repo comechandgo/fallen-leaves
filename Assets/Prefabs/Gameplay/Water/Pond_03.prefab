@@ -172,3 +172,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   waterMask: {fileID: 0}
+  collectorMargin: 0

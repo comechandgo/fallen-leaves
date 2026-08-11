@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5275365294219768372}
   - component: {fileID: 1046044927547833138}
   - component: {fileID: 2495606436613377958}
+  - component: {fileID: 5978764767409469078}
   - component: {fileID: 60302507080013005}
   - component: {fileID: 6723578490797902963}
   m_Layer: 10
@@ -58,7 +59,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 9d72939e22c437a4a8fa5c94bdbf3d38, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -153,6 +154,23 @@ MonoBehaviour:
   minBlue: 0.56
   minGreen: 0.42
   minBlueBiasOverRed: 0.11
+--- !u!114 &5978764767409469078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3847742202501665107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61d24bb83d5d1074089627026bb371ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetRenderer: {fileID: 5275365294219768372}
+  waterMask: {fileID: 2495606436613377958}
+  entryAnchor: {x: -7.3842998, y: 2.2528515}
+  exitAnchor: {x: 7.3843, y: -1.9159765}
+  nativeWaterWidth: 2.5686717
 --- !u!114 &60302507080013005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -180,3 +198,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   waterMask: {fileID: 2495606436613377958}
+  collectorMargin: 1
