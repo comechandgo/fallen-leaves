@@ -20,6 +20,7 @@ public static class LevelPrefabRuntimeValidation
     private static int startFrame;
     private static int validationFrame;
     private static int stage;
+    private static TiledMapPrototypeImporter.Layout prototype;
 
     static LevelPrefabRuntimeValidation()
     {
@@ -53,6 +54,7 @@ public static class LevelPrefabRuntimeValidation
         failed = false;
         stage = 0;
         validationQueued = false;
+        prototype = null;
         report.Add($"Fallen Leaves level prefab runtime validation - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         report.Add($"Unity: {Application.unityVersion}");
         report.Add(string.Empty);
@@ -124,6 +126,8 @@ public static class LevelPrefabRuntimeValidation
 
     private static void ValidateAllLevels()
     {
+        prototype = TiledMapPrototypeImporter.LoadAndValidate();
+        Check(prototype != null, "Tiled map prototype parses during runtime validation");
         LevelCatalog catalog = Resources.Load<LevelCatalog>("LevelCatalog");
         Check(catalog != null, "Resources/LevelCatalog.asset is loadable");
         if (catalog == null) return;
@@ -188,6 +192,21 @@ public static class LevelPrefabRuntimeValidation
         Check(Mathf.Approximately(root.TimeLimitSeconds, expectedTimeLimit), $"{id}: time limit is {expectedTimeLimit:0.##} seconds");
         Check(root.Endless == expectedEndless, $"{id}: endless rule matches expected value");
         Check(Physics2D.gravity == Vector2.zero, $"{id}: runtime 2D gravity is disabled");
+        Check(root.MapBounds == prototype.Bounds, $"{id}: uses the 120x90 TMJ bounds");
+        Check(Vector2.Distance(root.CameraStart, prototype.CameraStart) < 0.01f, $"{id}: stores the TMJ CameraStart");
+
+        MapPrototypeGizmos metadata = root.GetComponent<MapPrototypeGizmos>();
+        Check(metadata != null && metadata.SourceSha256 == prototype.SourceSha256,
+            $"{id}: records the authoritative TMJ SHA-256");
+        Check(root.transform.Find("BoundaryArt") == null, $"{id}: contains no old mountain boundary art");
+        Check(root.transform.Find("LeafSpawner/LeafSpawnArea") == null, $"{id}: contains no fixed LeafSpawnArea");
+        ValidateGroup(root.transform, "Obstacles", prototype.Obstacles.Length, id);
+        ValidateGroup(root.transform, "Decorations", prototype.Decorations.Length, id);
+        ValidateGroup(root.transform, "Landmarks", prototype.Landmarks.Length, id);
+
+        WindBlower wind = root.WindBlower;
+        Check(wind != null && Vector2.Distance(wind.transform.position, prototype.WindStart) < 0.01f,
+            $"{id}: WindBlower starts at the TMJ WindStart");
 
         ValidateGround(root, id);
         ValidateWater(root, id);
@@ -224,10 +243,24 @@ public static class LevelPrefabRuntimeValidation
         Check(tilemap != null && tilemap.GetUsedTilesCount() > 0, $"{id}: ground Tilemap contains generated tiles");
         if (generator == null || tilemap == null) return;
 
-        bool expectsGreen = id == LevelId.SimpleSmall || id == LevelId.TimedChallenge;
-        string expectedTileName = expectsGreen ? "GroundGreen" : "GroundYellow";
-        Check(generator.GroundTile != null && generator.GroundTile.name == expectedTileName,
-            $"{id}: ground uses {expectedTileName}");
+        Check(generator.GreenTile != null && generator.GreenTile.name == "GroundGreen",
+            $"{id}: mixed ground references GroundGreen");
+        Check(generator.YellowTile != null && generator.YellowTile.name == "GroundYellow",
+            $"{id}: mixed ground references GroundYellow");
+        generator.CountTiles(out int greenCount, out int yellowCount);
+        Check(greenCount > 0 && yellowCount > 0 && Mathf.Abs(greenCount - yellowCount) <= 1,
+            $"{id}: ground is 50/50 green and yellow ({greenCount}/{yellowCount})");
+
+        float overallGreen = greenCount / (float)Mathf.Max(1, greenCount + yellowCount);
+        for (int i = 0; i < prototype.Regions.Length; i++)
+        {
+            TiledMapPrototypeImporter.Region region = prototype.Regions[i];
+            float regionGreen = generator.GetGreenRatio(region.Bounds);
+            if (region.RegionId == "Meadow")
+                Check(regionGreen < overallGreen, $"{id}: Meadow is yellow-biased ({regionGreen:P0})");
+            else
+                Check(regionGreen > overallGreen, $"{id}: {region.RegionId} is green-biased ({regionGreen:P0})");
+        }
 
         Bounds localBounds = tilemap.localBounds;
         Vector3 worldMin = tilemap.transform.TransformPoint(localBounds.min);
@@ -242,40 +275,66 @@ public static class LevelPrefabRuntimeValidation
 
     private static void ValidateWater(LevelRoot root, LevelId id)
     {
-        RiverPath2D path = root.GetComponentInChildren<RiverPath2D>(true);
-        RiverWaterMask artMask = root.GetComponentInChildren<RiverWaterMask>(true);
+        RiverImagePiece[] pieces = root.GetComponentsInChildren<RiverImagePiece>(true);
+        Check(pieces.Length == 6, $"{id}: contains exactly six river image pieces");
+        if (pieces.Length != 6) return;
 
-        if (id == LevelId.SimpleSmall)
+        int art01 = 0;
+        int art02 = 0;
+        int art03 = 0;
+        bool componentsCorrect = true;
+        for (int i = 0; i < pieces.Length; i++)
         {
-            Check(path == null, $"{id}: uses authored river art instead of RiverPath2D");
-            Check(artMask != null, $"{id}: river art has RiverWaterMask");
-            Check(root.GetComponentInChildren<RiverFlowOverlay>(true) != null,
-                $"{id}: river art preserves the reusable flow overlay component");
-            Check(root.GetComponentsInChildren<WaterFlowLine>(true).Length == 28,
-                $"{id}: river art generated all 28 animated flow lines");
-            return;
+            if (pieces[i].name.Contains("RiverArt_01")) art01++;
+            if (pieces[i].name.Contains("RiverArt_02")) art02++;
+            if (pieces[i].name.Contains("RiverArt_03")) art03++;
+            if (pieces[i].GetComponent<RiverWaterMask>() == null
+                || pieces[i].GetComponent<RiverCollector>() == null
+                || pieces[i].GetComponent<Collider2D>() == null
+                || pieces[i].GetComponent<RiverFlowOverlay>() == null)
+                componentsCorrect = false;
+
+            if (i > 0)
+                Check(Vector2.Distance(pieces[i - 1].WorldExit, pieces[i].WorldEntry) <= 1.1f,
+                    $"{id}: river pieces {i} and {i + 1} overlap without a route gap");
         }
 
-        Check(path != null, $"{id}: RiverPath2D exists");
-        if (path == null) return;
+        Check(art01 == 2 && art02 == 2 && art03 == 2,
+            $"{id}: uses each RiverArt image exactly twice");
+        Check(componentsCorrect, $"{id}: every river image piece has mask, collider, flow, and collector");
+        Check(Vector2.Distance(pieces[0].WorldEntry, prototype.RiverPoints[0]) < 0.05f,
+            $"{id}: river begins at the TMJ southwest endpoint");
+        Check(Vector2.Distance(pieces[pieces.Length - 1].WorldExit, prototype.RiverPoints[prototype.RiverPoints.Length - 1]) < 0.05f,
+            $"{id}: river ends at the TMJ northeast endpoint");
 
-        RiverCollector[] collectors = path.GetComponentsInChildren<RiverCollector>(true);
-        Check(path.ControlPointCount >= 2, $"{id}: RiverPath2D stores local control points");
-        Check(collectors.Length > 0, $"{id}: RiverPath2D generated runtime collection triggers");
-        Check(path.GetComponentInChildren<WaterFlow>(true) != null,
-            $"{id}: RiverPath2D water preserves UV flow animation");
+        Transform lake = root.transform.Find("Water/Lake_" + prototype.Lake.Name);
+        Check(lake != null && Vector2.Distance(lake.position, prototype.Lake.Position) < 0.01f,
+            $"{id}: Pond_01 lake is centered at the TMJ lake position");
+        PolygonCollider2D lakeCollider = lake != null ? lake.GetComponent<PolygonCollider2D>() : null;
+        Check(lakeCollider != null && lakeCollider.isTrigger, $"{id}: lake has an independent ellipse collection trigger");
+        if (lakeCollider != null)
+        {
+            Check(Mathf.Abs(lakeCollider.bounds.size.x - prototype.Lake.Size.x) < 0.05f
+                && Mathf.Abs(lakeCollider.bounds.size.y - prototype.Lake.Size.y) < 0.05f,
+                $"{id}: lake trigger matches the TMJ 18x11 metre ellipse");
+        }
 
+        Transform oldTree = root.transform.Find("Landmarks/OldTree");
+        Check(oldTree != null && Vector2.Distance(oldTree.position, new Vector2(48f, 34f)) < 0.01f,
+            $"{id}: OldTree landmark is centered at (48, 34)");
+
+        RiverCollector[] collectors = root.GetComponentsInChildren<RiverCollector>(true);
         bool layersCorrect = true;
         int riverLayer = LayerMask.NameToLayer("River");
         for (int i = 0; i < collectors.Length; i++)
         {
-            if (collectors[i].gameObject.layer != riverLayer)
+            if (collectors[i].enabled && collectors[i].gameObject.layer != riverLayer)
             {
                 layersCorrect = false;
                 break;
             }
         }
-        Check(layersCorrect, $"{id}: generated river triggers use the River layer");
+        Check(layersCorrect, $"{id}: enabled water collectors use the River layer");
     }
 
     private static void ValidateCamera(LevelRoot root, LevelId id)
@@ -284,8 +343,13 @@ public static class LevelPrefabRuntimeValidation
         Check(camera != null && camera.orthographic, $"{id}: orthographic main camera is configured");
         if (camera == null) return;
 
+        float halfHeight = camera.orthographicSize;
+        float halfWidth = halfHeight * camera.aspect;
+        Vector2 expected = new Vector2(
+            Mathf.Clamp(root.CameraStart.x, root.MapBounds.xMin + halfWidth, root.MapBounds.xMax - halfWidth),
+            Mathf.Clamp(root.CameraStart.y, root.MapBounds.yMin + halfHeight, root.MapBounds.yMax - halfHeight));
         Vector2 cameraCenter = camera.transform.position;
-        Check(Vector2.Distance(cameraCenter, root.MapBounds.center) < 0.01f, $"{id}: camera starts at map center");
+        Check(Vector2.Distance(cameraCenter, expected) < 0.05f, $"{id}: camera starts at the clamped TMJ CameraStart");
         Check(camera.GetComponent<GameCameraController>() != null, $"{id}: camera bounds controller is present");
     }
 
@@ -314,13 +378,18 @@ public static class LevelPrefabRuntimeValidation
             }
 
             Vector2 position = leaf.transform.position;
-            if (!root.MapBounds.Contains(position)) outsideCount++;
+            Rect safeBounds = new Rect(
+                root.MapBounds.xMin + 1f,
+                root.MapBounds.yMin + 1f,
+                root.MapBounds.width - 2f,
+                root.MapBounds.height - 2f);
+            if (!safeBounds.Contains(position)) outsideCount++;
             if (IsBlockedSpawnPosition(position)) blockedCount++;
         }
 
         Check(componentsCorrect, $"{id}: every spawned leaf preserves the prefab component set and Leaf layer");
-        Check(outsideCount == 0, $"{id}: all sampled leaf positions are inside map bounds");
-        Check(blockedCount == 0, $"{id}: sampled leaf positions avoid Obstacle and River layers");
+        Check(outsideCount == 0, $"{id}: all sampled leaves keep one metre from map boundaries");
+        Check(blockedCount == 0, $"{id}: sampled leaves keep one metre from obstacles and water");
 
         if (id == LevelId.SimpleSmall && leaves.Length > 0)
         {
@@ -334,12 +403,12 @@ public static class LevelPrefabRuntimeValidation
     private static bool IsBlockedSpawnPosition(Vector2 position)
     {
         int mask = LayerMask.GetMask("Obstacle", "River");
-        Collider2D[] hits = Physics2D.OverlapCircleAll(position, 0.65f, mask);
+        Collider2D[] hits = Physics2D.OverlapCircleAll(position, 1f, mask);
         for (int i = 0; i < hits.Length; i++)
         {
             Collider2D hit = hits[i];
             RiverWaterMask waterMask = hit.GetComponentInParent<RiverWaterMask>();
-            if (waterMask != null && !waterMask.ContainsWater(position)) continue;
+            if (waterMask != null && !waterMask.IntersectsCircle(position, 1f)) continue;
             return true;
         }
 
@@ -348,18 +417,27 @@ public static class LevelPrefabRuntimeValidation
 
     private static void ValidateRiverCollection(LevelRoot root, LevelId id)
     {
-        RiverPath2D path = root.GetComponentInChildren<RiverPath2D>(true);
-        RiverCollector collector = path != null ? path.GetComponentInChildren<RiverCollector>(true) : null;
-        LeafLifecycle leaf = root.GetComponentInChildren<LeafLifecycle>(true);
-        Check(collector != null && leaf != null, $"{id}: collector and leaf exist for collection test");
-        if (collector == null || leaf == null) return;
-
-        int countBefore = root.ActiveLeafCount;
+        RiverImagePiece[] pieces = root.GetComponentsInChildren<RiverImagePiece>(true);
         float coinsBefore = RiverCollector.SessionCoins;
-        collector.SendMessage("OnTriggerEnter2D", leaf.GetComponent<Collider2D>(), SendMessageOptions.RequireReceiver);
+        for (int i = 0; i < pieces.Length; i++)
+        {
+            LeafLifecycle leaf = FindUncollectedLeaf(root);
+            RiverCollector collector = pieces[i].GetComponent<RiverCollector>();
+            int countBefore = root.ActiveLeafCount;
+            bool collected = CollectAtWaterPoint(leaf, collector, FindWaterPoint(pieces[i]));
+            Check(collected && root.ActiveLeafCount == countBefore - 1,
+                $"{id}: RiverArt piece {i + 1} collects and unregisters exactly one leaf");
+        }
 
-        Check(root.ActiveLeafCount == countBefore - 1, $"{id}: river collection unregisters exactly one leaf");
-        Check(RiverCollector.SessionCoins > coinsBefore, $"{id}: river collection still awards session coins");
+        Transform lake = root.transform.Find("Water/Lake_" + prototype.Lake.Name);
+        LeafLifecycle lakeLeaf = FindUncollectedLeaf(root);
+        RiverCollector lakeCollector = lake != null ? lake.GetComponent<RiverCollector>() : null;
+        int lakeCountBefore = root.ActiveLeafCount;
+        bool lakeCollected = CollectAtWaterPoint(lakeLeaf, lakeCollector, prototype.Lake.Position);
+        Check(lakeCollected && root.ActiveLeafCount == lakeCountBefore - 1,
+            $"{id}: Pond_01 lake collects and unregisters exactly one leaf");
+        Check(RiverCollector.SessionCoins >= coinsBefore + pieces.Length + 1,
+            $"{id}: every water collection awards session coins");
     }
 
     private static void ValidateEndlessRules(LevelRoot root, LevelId id)
@@ -513,19 +591,20 @@ public static class LevelPrefabRuntimeValidation
 
     private static void AwardUpgradeCoins(LevelRoot root, int count)
     {
-        RiverPath2D path = root.GetComponentInChildren<RiverPath2D>(true);
-        RiverCollector collector = path != null ? path.GetComponentInChildren<RiverCollector>(true) : null;
+        RiverImagePiece piece = root.GetComponentInChildren<RiverImagePiece>(true);
+        RiverCollector collector = piece != null ? piece.GetComponent<RiverCollector>() : null;
         LeafLifecycle[] leaves = root.GetComponentsInChildren<LeafLifecycle>(true);
         Check(collector != null && leaves.Length >= count, "Coin setup has enough leaves and a river collector");
         if (collector == null) return;
+
+        Vector2 waterPoint = FindWaterPoint(piece);
 
         int collected = 0;
         for (int i = 0; i < leaves.Length && collected < count; i++)
         {
             Windable windable = leaves[i].GetComponent<Windable>();
             if (windable == null || windable.IsCollected) continue;
-            collector.SendMessage("OnTriggerEnter2D", leaves[i].GetComponent<Collider2D>(), SendMessageOptions.RequireReceiver);
-            collected++;
+            if (CollectAtWaterPoint(leaves[i], collector, waterPoint)) collected++;
         }
 
         Check(collected == count && RiverCollector.CoinCount >= 32f,
@@ -534,8 +613,8 @@ public static class LevelPrefabRuntimeValidation
 
     private static void ValidateUpgradedLeafValue(LevelRoot root)
     {
-        RiverPath2D path = root.GetComponentInChildren<RiverPath2D>(true);
-        RiverCollector collector = path != null ? path.GetComponentInChildren<RiverCollector>(true) : null;
+        RiverImagePiece piece = root.GetComponentInChildren<RiverImagePiece>(true);
+        RiverCollector collector = piece != null ? piece.GetComponent<RiverCollector>() : null;
         LeafLifecycle[] leaves = root.GetComponentsInChildren<LeafLifecycle>(true);
         LeafLifecycle uncollected = null;
 
@@ -553,9 +632,62 @@ public static class LevelPrefabRuntimeValidation
         if (collector == null || uncollected == null) return;
 
         float before = RiverCollector.SessionCoins;
-        collector.SendMessage("OnTriggerEnter2D", uncollected.GetComponent<Collider2D>(), SendMessageOptions.RequireReceiver);
+        CollectAtWaterPoint(uncollected, collector, FindWaterPoint(piece));
         Check(Mathf.Approximately(RiverCollector.SessionCoins - before, 1.5f),
             "Leaf value upgrade changes subsequent collection rewards");
+    }
+
+    private static void ValidateGroup(Transform root, string groupName, int expectedCount, LevelId id)
+    {
+        Transform group = root.Find(groupName);
+        Check(group != null && group.childCount == expectedCount,
+            $"{id}: {groupName} contains {expectedCount} TMJ objects");
+    }
+
+    private static LeafLifecycle FindUncollectedLeaf(LevelRoot root)
+    {
+        LeafLifecycle[] leaves = root.GetComponentsInChildren<LeafLifecycle>(true);
+        for (int i = 0; i < leaves.Length; i++)
+        {
+            Windable windable = leaves[i].GetComponent<Windable>();
+            if (windable != null && !windable.IsCollected) return leaves[i];
+        }
+        return null;
+    }
+
+    private static bool CollectAtWaterPoint(LeafLifecycle leaf, RiverCollector collector, Vector2 waterPoint)
+    {
+        if (leaf == null || collector == null) return false;
+        Rigidbody2D body = leaf.GetComponent<Rigidbody2D>();
+        if (body != null) body.position = waterPoint;
+        leaf.transform.position = waterPoint;
+        Physics2D.SyncTransforms();
+        Windable windable = leaf.GetComponent<Windable>();
+        collector.SendMessage("OnTriggerEnter2D", leaf.GetComponent<Collider2D>(), SendMessageOptions.RequireReceiver);
+        return windable != null && windable.IsCollected;
+    }
+
+    private static Vector2 FindWaterPoint(RiverImagePiece piece)
+    {
+        if (piece == null) return Vector2.zero;
+        RiverWaterMask mask = piece.GetComponent<RiverWaterMask>();
+        SpriteRenderer renderer = piece.GetComponent<SpriteRenderer>();
+        if (mask == null || renderer == null) return (piece.WorldEntry + piece.WorldExit) * 0.5f;
+
+        Bounds bounds = renderer.bounds;
+        const int steps = 24;
+        for (int y = 0; y <= steps; y++)
+        {
+            for (int x = 0; x <= steps; x++)
+            {
+                Vector2 sample = new Vector2(
+                    Mathf.Lerp(bounds.min.x, bounds.max.x, x / (float)steps),
+                    Mathf.Lerp(bounds.min.y, bounds.max.y, y / (float)steps));
+                if (mask.ContainsWater(sample)) return sample;
+            }
+        }
+
+        return (piece.WorldEntry + piece.WorldExit) * 0.5f;
     }
 
     private static object InvokePrivate(object target, string methodName, params object[] arguments)
