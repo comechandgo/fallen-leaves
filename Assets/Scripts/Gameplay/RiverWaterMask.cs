@@ -40,6 +40,39 @@ public sealed class RiverWaterMask : MonoBehaviour
         return IsWaterColor(sourceTexture.GetPixelBilinear(uv.x, uv.y));
     }
 
+    public bool IntersectsCircle(Vector2 worldPosition, float worldRadius)
+    {
+        if (ContainsWater(worldPosition)) return true;
+        if (worldRadius <= 0f) return false;
+
+        const int directions = 16;
+        const int rings = 3;
+        for (int ring = 1; ring <= rings; ring++)
+        {
+            float radius = worldRadius * ring / rings;
+            for (int i = 0; i < directions; i++)
+            {
+                float angle = i / (float)directions * Mathf.PI * 2f;
+                Vector2 sample = worldPosition + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+                if (ContainsWater(sample)) return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool IsWaterAtUv(Vector2 uv)
+    {
+        if (sourceTexture == null)
+        {
+            if (targetRenderer == null) targetRenderer = GetComponent<SpriteRenderer>();
+            if (targetRenderer != null && targetRenderer.sprite != null) sourceTexture = targetRenderer.sprite.texture;
+        }
+
+        if (sourceTexture == null || uv.x < 0f || uv.x > 1f || uv.y < 0f || uv.y > 1f) return false;
+        return IsWaterColor(sourceTexture.GetPixelBilinear(uv.x, uv.y));
+    }
+
     private bool TryWorldToUv(Vector2 worldPosition, out Vector2 uv)
     {
         Bounds spriteBounds = targetRenderer.sprite.bounds;
@@ -52,7 +85,7 @@ public sealed class RiverWaterMask : MonoBehaviour
         return u >= 0f && u <= 1f && v >= 0f && v <= 1f;
     }
 
-    private bool IsWaterColor(Color color)
+    public bool IsWaterColor(Color color)
     {
         if (color.a <= 0.05f)
         {

@@ -1,0 +1,20 @@
+{
+  "type": "template",
+  "object": {
+    "name": "MainRiver",
+    "polyline": [
+      { "x": 0, "y": 0 },
+      { "x": 320, "y": -64 }
+    ],
+    "properties": [
+      { "name": "widthM", "type": "float", "value": 8.0 },
+      { "name": "isCleanupTarget", "type": "bool", "value": true },
+      { "name": "acceptsLeaves", "type": "bool", "value": true },
+      { "name": "acceptsDebris", "type": "bool", "value": true },
+      { "name": "collectorMarginM", "type": "float", "value": 1.0 }
+    ],
+    "rotation": 0,
+    "type": "RiverPath",
+    "visible": true
+  }
+}

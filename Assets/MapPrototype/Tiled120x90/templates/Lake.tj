@@ -1,0 +1,19 @@
+{
+  "type": "template",
+  "object": {
+    "ellipse": true,
+    "height": 352,
+    "name": "Lake",
+    "properties": [
+      { "name": "lakeId", "type": "string", "value": "Lake" },
+      { "name": "isCleanupTarget", "type": "bool", "value": true },
+      { "name": "acceptsLeaves", "type": "bool", "value": true },
+      { "name": "acceptsDebris", "type": "bool", "value": true },
+      { "name": "collectorMarginM", "type": "float", "value": 1.0 }
+    ],
+    "rotation": 0,
+    "type": "Lake",
+    "visible": true,
+    "width": 576
+  }
+}

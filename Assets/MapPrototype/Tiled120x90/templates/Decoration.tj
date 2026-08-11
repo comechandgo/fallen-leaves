@@ -1,0 +1,15 @@
+{
+  "type": "template",
+  "object": {
+    "height": 224,
+    "name": "Decoration",
+    "properties": [
+      { "name": "prefabKey", "type": "string", "value": "Tree_01" },
+      { "name": "sortingOffset", "type": "int", "value": 0 }
+    ],
+    "rotation": 0,
+    "type": "Decoration",
+    "visible": true,
+    "width": 192
+  }
+}

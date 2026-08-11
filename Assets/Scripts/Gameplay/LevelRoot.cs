@@ -8,6 +8,7 @@ public sealed class LevelRoot : MonoBehaviour
 
     [Header("Map")]
     [SerializeField] private Rect mapBounds = new Rect(-50f, -50f, 100f, 100f);
+    [SerializeField] private Vector2 cameraStart;
     [SerializeField, Min(1f)] private float initialCameraSize = 30f;
     [SerializeField, Min(1f)] private float minCameraSize = 18f;
     [SerializeField, Min(1f)] private float maxCameraSize = 60f;
@@ -30,6 +31,7 @@ public sealed class LevelRoot : MonoBehaviour
 
     public LevelId Id => levelId;
     public Rect MapBounds => mapBounds;
+    public Vector2 CameraStart => cameraStart;
     public int InitialLeafCount => initialLeafCount;
     public float TimeLimitSeconds => timeLimitSeconds;
     public bool Endless => endless;
@@ -80,6 +82,7 @@ public sealed class LevelRoot : MonoBehaviour
     public void Configure(
         LevelId id,
         Rect bounds,
+        Vector2 initialCameraPosition,
         float cameraInitial,
         float cameraMin,
         float cameraMax,
@@ -95,6 +98,7 @@ public sealed class LevelRoot : MonoBehaviour
     {
         levelId = id;
         mapBounds = bounds;
+        cameraStart = initialCameraPosition;
         initialCameraSize = cameraInitial;
         minCameraSize = cameraMin;
         maxCameraSize = cameraMax;
@@ -119,12 +123,12 @@ public sealed class LevelRoot : MonoBehaviour
             camera = cameraObject.AddComponent<Camera>();
         }
 
-        camera.transform.position = new Vector3(mapBounds.center.x, mapBounds.center.y, -10f);
+        camera.transform.position = new Vector3(cameraStart.x, cameraStart.y, -10f);
         camera.orthographic = true;
         camera.backgroundColor = Theme.Sky;
 
         GameCameraController controller = camera.GetComponent<GameCameraController>();
         if (controller == null) controller = camera.gameObject.AddComponent<GameCameraController>();
-        controller.SetBounds(mapBounds, minCameraSize, maxCameraSize, initialCameraSize);
+        controller.SetBounds(mapBounds, cameraStart, minCameraSize, maxCameraSize, initialCameraSize);
     }
 }

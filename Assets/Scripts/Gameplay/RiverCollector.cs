@@ -8,6 +8,7 @@ public class RiverCollector : MonoBehaviour
     public int CollectedCount { get; private set; }
     private static float leafValue = 1f;
     [SerializeField] private RiverWaterMask waterMask;
+    [SerializeField, Min(0f)] private float collectorMargin;
 
     private void Awake()
     {
@@ -17,9 +18,10 @@ public class RiverCollector : MonoBehaviour
         }
     }
 
-    public void SetWaterMask(RiverWaterMask mask)
+    public void SetWaterMask(RiverWaterMask mask, float margin = 0f)
     {
         waterMask = mask;
+        collectorMargin = Mathf.Max(0f, margin);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -69,7 +71,7 @@ public class RiverCollector : MonoBehaviour
             return;
         }
 
-        if (waterMask != null && !waterMask.ContainsWater(windable.Position))
+        if (waterMask != null && !waterMask.IntersectsCircle(windable.Position, collectorMargin))
         {
             return;
         }

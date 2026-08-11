@@ -1,0 +1,119 @@
+{
+  "automappingRulesFile": "",
+  "commands": [],
+  "compatibilityVersion": 1100,
+  "extensionsPath": "",
+  "folders": [
+    "."
+  ],
+  "properties": [],
+  "propertyTypes": [
+    {
+      "color": "#4b6f44",
+      "drawFill": false,
+      "id": 8,
+      "members": [
+        { "name": "worldUnitsPerTile", "type": "float", "value": 1.0 },
+        { "name": "scatterMode", "type": "string", "value": "RandomWalkableArea" },
+        { "name": "scatterClearanceM", "type": "float", "value": 1.0 },
+        { "name": "scatterAvoidWater", "type": "bool", "value": true },
+        { "name": "scatterAvoidObstacles", "type": "bool", "value": true }
+      ],
+      "name": "FallenLeavesMap",
+      "type": "class",
+      "useAs": ["map"]
+    },
+    {
+      "color": "#7aa35a",
+      "drawFill": true,
+      "id": 1,
+      "members": [
+        { "name": "regionId", "type": "string", "value": "" },
+        { "name": "difficulty", "type": "int", "value": 1 },
+        { "name": "areaRole", "type": "string", "value": "Exploration" }
+      ],
+      "name": "GameplayRegion",
+      "type": "class",
+      "useAs": ["object"]
+    },
+    {
+      "color": "#4ea8de",
+      "drawFill": false,
+      "id": 2,
+      "members": [
+        { "name": "widthM", "type": "float", "value": 8.0 },
+        { "name": "isCleanupTarget", "type": "bool", "value": true },
+        { "name": "acceptsLeaves", "type": "bool", "value": true },
+        { "name": "acceptsDebris", "type": "bool", "value": true },
+        { "name": "collectorMarginM", "type": "float", "value": 1.0 }
+      ],
+      "name": "RiverPath",
+      "type": "class",
+      "useAs": ["object"]
+    },
+    {
+      "color": "#3f8fbd",
+      "drawFill": true,
+      "id": 9,
+      "members": [
+        { "name": "lakeId", "type": "string", "value": "Lake" },
+        { "name": "isCleanupTarget", "type": "bool", "value": true },
+        { "name": "acceptsLeaves", "type": "bool", "value": true },
+        { "name": "acceptsDebris", "type": "bool", "value": true },
+        { "name": "collectorMarginM", "type": "float", "value": 1.0 }
+      ],
+      "name": "Lake",
+      "type": "class",
+      "useAs": ["object"]
+    },
+    {
+      "color": "#7f5539",
+      "drawFill": true,
+      "id": 4,
+      "members": [
+        { "name": "prefabKey", "type": "string", "value": "Stone_01" },
+        { "name": "blocksLeaf", "type": "bool", "value": true },
+        { "name": "colliderType", "type": "string", "value": "Prefab" }
+      ],
+      "name": "Obstacle",
+      "type": "class",
+      "useAs": ["object"]
+    },
+    {
+      "color": "#2a9d8f",
+      "drawFill": false,
+      "id": 5,
+      "members": [
+        { "name": "prefabKey", "type": "string", "value": "Tree_01" },
+        { "name": "sortingOffset", "type": "int", "value": 0 }
+      ],
+      "name": "Decoration",
+      "type": "class",
+      "useAs": ["object"]
+    },
+    {
+      "color": "#e9c46a",
+      "drawFill": false,
+      "id": 6,
+      "members": [
+        { "name": "landmarkId", "type": "string", "value": "OldTree" },
+        { "name": "prefabKey", "type": "string", "value": "Tree_09" },
+        { "name": "visibleFromStart", "type": "bool", "value": true }
+      ],
+      "name": "Landmark",
+      "type": "class",
+      "useAs": ["object"]
+    },
+    {
+      "color": "#e63946",
+      "drawFill": false,
+      "id": 7,
+      "members": [
+        { "name": "pointId", "type": "string", "value": "CameraStart" }
+      ],
+      "name": "GameplayPoint",
+      "type": "class",
+      "useAs": ["object"]
+    }
+  ]
+}

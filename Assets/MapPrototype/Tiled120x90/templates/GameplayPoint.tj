@@ -1,0 +1,13 @@
+{
+  "type": "template",
+  "object": {
+    "name": "CameraStart",
+    "point": true,
+    "properties": [
+      { "name": "pointId", "type": "string", "value": "CameraStart" }
+    ],
+    "rotation": 0,
+    "type": "GameplayPoint",
+    "visible": true
+  }
+}

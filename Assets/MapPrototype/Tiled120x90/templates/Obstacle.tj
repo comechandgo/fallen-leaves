@@ -1,0 +1,16 @@
+{
+  "type": "template",
+  "object": {
+    "height": 128,
+    "name": "Obstacle",
+    "properties": [
+      { "name": "prefabKey", "type": "string", "value": "Stone_01" },
+      { "name": "blocksLeaf", "type": "bool", "value": true },
+      { "name": "colliderType", "type": "string", "value": "Prefab" }
+    ],
+    "rotation": 0,
+    "type": "Obstacle",
+    "visible": true,
+    "width": 192
+  }
+}

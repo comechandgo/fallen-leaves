@@ -14,92 +14,63 @@ public static class LevelPrefabMigration
     private const string PrefabRoot = "Assets/Prefabs/Gameplay";
     private const string LevelPrefabRoot = "Assets/Prefabs/Levels";
     private const string CatalogPath = "Assets/Resources/LevelCatalog.asset";
+    private const string RiverMaterialPath = MaterialRoot + "/RiverSoftBlend.mat";
+    private const string RiverShaderPath = MaterialRoot + "/RiverSoftBlend.shader";
+    private const int GroundSeed = 12090;
+    private const float GroundPatchWorldSize = 26f;
 
     private const int LeafLayer = 8;
     private const int ObstacleLayer = 9;
     private const int RiverLayer = 10;
 
-    private static readonly string[] GameplayArtFiles =
-    {
-        "ggj/通用/叶子1.png",
-        "ggj/通用/叶子2.png",
-        "ggj/通用/叶子3.png",
-        "ggj/通用/叶子4.png",
-        "ggj/通用/草地绿.png",
-        "ggj/通用/草地黄.png",
-        "ggj/通用/石头1.png",
-        "ggj/通用/石头2.png",
-        "ggj/通用/石头3.png",
-        "ggj/通用/石头4.png",
-        "ggj/通用/石头5.png",
-        "ggj/通用/石头6.png",
-        "ggj/通用/石头7.png",
-        "ggj/通用/石头8.png",
-        "ggj/通用/石头9.png",
-        "ggj/通用/石头10.png",
-        "ggj/通用/长条石头1.png",
-        "ggj/通用/长条石头2.png",
-        "ggj/通用/长条石头3.png",
-        "ggj/通用/芦苇1.png",
-        "ggj/通用/芦苇2.png",
-        "ggj地图补充/山1.png",
-        "ggj地图补充/山2.png",
-        "ggj地图补充/树1.png",
-        "ggj地图补充/树2.png",
-        "ggj地图补充/树3.png",
-        "ggj地图补充/树4.png",
-        "ggj地图补充/树5.png",
-        "ggj地图补充/树6.png",
-        "ggj地图补充/树7.png",
-        "ggj地图补充/树8.png",
-        "ggj地图补充/树9.png",
-        "ggj地图补充/河1.png",
-        "ggj地图补充/河2.png",
-        "ggj地图补充/河3.png",
-        "ggj地图补充/湖1.png",
-        "ggj地图补充/湖2.png",
-        "ggj地图补充/湖3.png"
-    };
-
-    [MenuItem("Tools/Fallen Leaves/Migrate Level Prefabs")]
+    [MenuItem("Tools/Fallen Leaves/Import Map Prototype")]
     public static void RunMenu()
+    {
+        RunWithDialog(false);
+    }
+
+    [MenuItem("Tools/Fallen Leaves/Force Rebuild Four Levels From TMJ")]
+    public static void RunForceMenu()
+    {
+        bool confirmed = EditorUtility.DisplayDialog(
+            "Force rebuild all four levels?",
+            "This replaces every authored level layout with map_120x90_v1.tmj and discards manual prefab layout edits.",
+            "Rebuild four levels",
+            "Cancel");
+        if (!confirmed) return;
+        RunWithDialog(true);
+    }
+
+    // Kept as the stable batch entry used by the previous migration command.
+    public static void RunBatch()
+    {
+        RunMigration(false);
+    }
+
+    public static void RunPrototypeBatch()
+    {
+        RunMigration(false);
+    }
+
+    public static void RunForcePrototypeBatch()
+    {
+        RunMigration(true);
+    }
+
+    private static void RunWithDialog(bool force)
     {
         try
         {
-            MigrationResult result = RunMigration(false);
+            MigrationResult result = RunMigration(force);
             EditorUtility.DisplayDialog(
-                "Fallen Leaves Migration",
-                result.Success
-                    ? $"Migration completed.\nGenerated levels: {result.GeneratedLevels}\nSkipped levels: {result.SkippedLevels}\nReport: {result.ReportPath}"
-                    : $"Migration failed. See Console and report:\n{result.ReportPath}",
+                "Fallen Leaves Tiled Import",
+                $"Import completed.\nGenerated levels: {result.GeneratedLevels}\nSkipped levels: {result.SkippedLevels}\nReport: {result.ReportPath}",
                 "OK");
         }
         catch (Exception exception)
         {
             Debug.LogException(exception);
-            EditorUtility.DisplayDialog("Fallen Leaves Migration", exception.Message, "OK");
-        }
-    }
-
-    [MenuItem("Tools/Fallen Leaves/Force Rebuild Level Prefabs")]
-    public static void RunForceMenu()
-    {
-        bool confirmed = EditorUtility.DisplayDialog(
-            "Force rebuild level prefabs?",
-            "This overwrites all four authored level prefabs. Base art and source files are not deleted.",
-            "Rebuild",
-            "Cancel");
-
-        if (!confirmed) return;
-        RunMigration(true);
-    }
-
-    public static void RunBatch()
-    {
-        MigrationResult result = RunMigration(false);
-        if (!result.Success)
-        {
-            throw new InvalidOperationException($"Level prefab migration failed. Report: {result.ReportPath}");
+            EditorUtility.DisplayDialog("Fallen Leaves Tiled Import", exception.Message, "OK");
         }
     }
 
@@ -107,18 +78,26 @@ public static class LevelPrefabMigration
     {
         List<string> report = new List<string>
         {
-            $"Fallen Leaves level prefab migration - {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+            $"Fallen Leaves Tiled map import - {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
             $"Unity: {Application.unityVersion}",
+            $"Source: {TiledMapPrototypeImporter.SourceAssetPath}",
             $"Force level rebuild: {forceLevelRebuild}",
             string.Empty
         };
 
         MigrationResult result = new MigrationResult();
-
         try
         {
+            // Parse and validate before writing any generated asset.
+            TiledMapPrototypeImporter.Layout layout = TiledMapPrototypeImporter.LoadAndValidate();
+            report.Add($"Source SHA-256: {layout.SourceSha256}");
+            report.Add($"Bounds: {layout.Bounds}");
+            report.Add($"River points: {layout.RiverPoints.Length}; width: {layout.RiverWidth:0.##}m");
+            report.Add($"Objects: {layout.Obstacles.Length} obstacles, {layout.Decorations.Length} decorations, {layout.Landmarks.Length} landmarks, 1 lake");
+
             EnsureFolders();
-            CopyAndImportGameplayArt(report);
+            List<string> gameplayArtFiles = BuildGameplayArtFileList();
+            CopyAndImportGameplayArt(gameplayArtFiles, report);
 
             Tile greenTile = CreateOrUpdateTile(
                 $"{TileRoot}/GroundGreen.asset",
@@ -126,33 +105,25 @@ public static class LevelPrefabMigration
             Tile yellowTile = CreateOrUpdateTile(
                 $"{TileRoot}/GroundYellow.asset",
                 LoadGameplaySprite("ggj/通用/草地黄.png"));
+            Material riverMaterial = CreateOrUpdateRiverMaterial();
 
-            Texture2D waterTexture = CreateOrUpdateWaterTexture();
-            Material bankMaterial = CreateOrUpdateMaterial(
-                $"{MaterialRoot}/RiverBank.mat",
-                LoadGameplayTexture("ggj/通用/草地黄.png"),
-                Theme.Bank);
-            Material waterMaterial = CreateOrUpdateMaterial(
-                $"{MaterialRoot}/RiverWater.mat",
-                waterTexture,
-                Color.white);
+            Dictionary<string, GameObject> prefabs = CreateBasePrefabs(riverMaterial, report);
+            ValidatePrefabKeys(layout, prefabs);
 
-            Dictionary<string, GameObject> prefabs = CreateBasePrefabs(bankMaterial, waterMaterial, report);
-            LevelSpec[] specs = CreateLevelSpecs(greenTile, yellowTile);
+            ModeSpec[] modes = CreateModeSpecs();
             Dictionary<LevelId, LevelRoot> levels = new Dictionary<LevelId, LevelRoot>();
-
-            for (int i = 0; i < specs.Length; i++)
+            for (int i = 0; i < modes.Length; i++)
             {
                 bool skipped;
                 LevelRoot level = CreateLevelPrefab(
-                    specs[i],
+                    modes[i],
+                    layout,
                     prefabs,
-                    bankMaterial,
-                    waterMaterial,
+                    greenTile,
+                    yellowTile,
                     forceLevelRebuild,
                     out skipped);
-
-                levels[specs[i].Id] = level;
+                levels[modes[i].Id] = level;
                 if (skipped) result.SkippedLevels++;
                 else result.GeneratedLevels++;
             }
@@ -161,7 +132,7 @@ public static class LevelPrefabMigration
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
-            ValidateMigration(catalog, report);
+            ValidateMigration(catalog, layout, gameplayArtFiles, report);
             report.Add(string.Empty);
             report.Add($"Generated levels: {result.GeneratedLevels}");
             report.Add($"Skipped existing levels: {result.SkippedLevels}");
@@ -173,15 +144,31 @@ public static class LevelPrefabMigration
             report.Add(string.Empty);
             report.Add("RESULT: FAILED");
             report.Add(exception.ToString());
-            Debug.LogException(exception);
             result.Success = false;
+            Debug.LogException(exception);
         }
 
         result.ReportPath = WriteReport(report);
-        if (!result.Success) throw new InvalidOperationException($"Migration failed. See {result.ReportPath}");
-
-        Debug.Log($"Level prefab migration completed. Report: {result.ReportPath}");
+        if (!result.Success) throw new InvalidOperationException($"Tiled map import failed. See {result.ReportPath}");
+        Debug.Log($"Tiled map import completed. Report: {result.ReportPath}");
         return result;
+    }
+
+    private static List<string> BuildGameplayArtFileList()
+    {
+        List<string> files = new List<string>
+        {
+            "ggj/通用/草地绿.png",
+            "ggj/通用/草地黄.png"
+        };
+        for (int i = 1; i <= 4; i++) files.Add($"ggj/通用/叶子{i}.png");
+        for (int i = 1; i <= 10; i++) files.Add($"ggj/通用/石头{i}.png");
+        for (int i = 1; i <= 3; i++) files.Add($"ggj/通用/长条石头{i}.png");
+        for (int i = 1; i <= 2; i++) files.Add($"ggj/通用/芦苇{i}.png");
+        for (int i = 1; i <= 9; i++) files.Add($"ggj地图补充/树{i}.png");
+        for (int i = 1; i <= 3; i++) files.Add($"ggj地图补充/河{i}.png");
+        for (int i = 1; i <= 3; i++) files.Add($"ggj地图补充/湖{i}.png");
+        return files;
     }
 
     private static void EnsureFolders()
@@ -207,34 +194,25 @@ public static class LevelPrefabMigration
         for (int i = 1; i < parts.Length; i++)
         {
             string next = current + "/" + parts[i];
-            if (!AssetDatabase.IsValidFolder(next))
-            {
-                AssetDatabase.CreateFolder(current, parts[i]);
-            }
-
+            if (!AssetDatabase.IsValidFolder(next)) AssetDatabase.CreateFolder(current, parts[i]);
             current = next;
         }
     }
 
-    private static void CopyAndImportGameplayArt(List<string> report)
+    private static void CopyAndImportGameplayArt(List<string> files, List<string> report)
     {
         int copied = 0;
         int reused = 0;
-
-        for (int i = 0; i < GameplayArtFiles.Length; i++)
+        for (int i = 0; i < files.Count; i++)
         {
-            string relative = GameplayArtFiles[i];
+            string relative = files[i];
             string sourceAssetPath = SourceArtRoot + relative;
             string destinationAssetPath = GameplayArtRoot + relative;
             EnsureAssetFolder(Path.GetDirectoryName(destinationAssetPath).Replace('\\', '/'));
 
             string sourceAbsolute = ToAbsolutePath(sourceAssetPath);
             string destinationAbsolute = ToAbsolutePath(destinationAssetPath);
-            if (!File.Exists(sourceAbsolute))
-            {
-                throw new FileNotFoundException("Missing source gameplay art", sourceAssetPath);
-            }
-
+            if (!File.Exists(sourceAbsolute)) throw new FileNotFoundException("Missing source gameplay art", sourceAssetPath);
             if (!File.Exists(destinationAbsolute))
             {
                 File.Copy(sourceAbsolute, destinationAbsolute, false);
@@ -247,161 +225,103 @@ public static class LevelPrefabMigration
         }
 
         AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-
-        for (int i = 0; i < GameplayArtFiles.Length; i++)
-        {
-            string relative = GameplayArtFiles[i];
-            string destinationAssetPath = GameplayArtRoot + relative;
-            TextureImporter importer = AssetImporter.GetAtPath(destinationAssetPath) as TextureImporter;
-            if (importer == null)
-            {
-                throw new InvalidOperationException($"TextureImporter unavailable for {destinationAssetPath}");
-            }
-
-            bool riverMask = relative.StartsWith("ggj地图补充/河", StringComparison.Ordinal);
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spriteImportMode = SpriteImportMode.Single;
-            importer.spritePixelsPerUnit = 100f;
-            importer.filterMode = FilterMode.Bilinear;
-            importer.mipmapEnabled = false;
-            importer.alphaIsTransparency = true;
-            importer.wrapMode = TextureWrapMode.Clamp;
-            importer.maxTextureSize = 4096;
-            importer.isReadable = riverMask;
-            importer.textureCompression = riverMask
-                ? TextureImporterCompression.Uncompressed
-                : TextureImporterCompression.Compressed;
-
-            TextureImporterSettings settings = new TextureImporterSettings();
-            importer.ReadTextureSettings(settings);
-            settings.spriteMeshType = SpriteMeshType.FullRect;
-            importer.SetTextureSettings(settings);
-            importer.SaveAndReimport();
-        }
-
-        report.Add($"Gameplay art copied: {copied}");
-        report.Add($"Gameplay art reused: {reused}");
+        for (int i = 0; i < files.Count; i++) ConfigureSpriteImporter(GameplayArtRoot + files[i], files[i].StartsWith("ggj地图补充/河", StringComparison.Ordinal));
+        report.Add($"Gameplay sprites: {copied} copied, {reused} reused, {files.Count} configured.");
     }
 
-    private static Tile CreateOrUpdateTile(string assetPath, Sprite sprite)
+    private static void ConfigureSpriteImporter(string assetPath, bool riverMaskTexture)
     {
-        if (sprite == null) throw new InvalidOperationException($"Cannot create Tile without Sprite: {assetPath}");
+        TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+        if (importer == null) throw new InvalidOperationException($"Missing TextureImporter for {assetPath}");
 
-        Tile tile = AssetDatabase.LoadAssetAtPath<Tile>(assetPath);
+        importer.textureType = TextureImporterType.Sprite;
+        importer.spriteImportMode = SpriteImportMode.Single;
+        importer.spritePixelsPerUnit = 100f;
+        importer.filterMode = FilterMode.Bilinear;
+        importer.mipmapEnabled = false;
+        importer.alphaIsTransparency = true;
+        importer.isReadable = riverMaskTexture;
+        importer.textureCompression = riverMaskTexture ? TextureImporterCompression.Uncompressed : TextureImporterCompression.Compressed;
+        importer.SaveAndReimport();
+    }
+
+    private static Tile CreateOrUpdateTile(string path, Sprite sprite)
+    {
+        if (sprite == null) throw new InvalidOperationException($"Missing ground Sprite for {path}");
+        Tile tile = AssetDatabase.LoadAssetAtPath<Tile>(path);
         if (tile == null)
         {
             tile = ScriptableObject.CreateInstance<Tile>();
-            AssetDatabase.CreateAsset(tile, assetPath);
+            AssetDatabase.CreateAsset(tile, path);
         }
 
         tile.sprite = sprite;
         tile.color = Color.white;
+        tile.transform = Matrix4x4.identity;
         tile.colliderType = Tile.ColliderType.None;
-        tile.flags = TileFlags.LockColor;
         EditorUtility.SetDirty(tile);
         return tile;
     }
 
-    private static Texture2D CreateOrUpdateWaterTexture()
+    private static Material CreateOrUpdateRiverMaterial()
     {
-        string path = $"{MaterialRoot}/GeneratedWaterTexture.asset";
-        Texture2D existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-        if (existing != null) return existing;
+        Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(RiverShaderPath);
+        if (shader == null) shader = Shader.Find("FallenLeaves/RiverSoftBlend");
+        if (shader == null) throw new InvalidOperationException($"Missing river blend shader: {RiverShaderPath}");
 
-        const int width = 192;
-        const int height = 32;
-        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
-        {
-            name = "GeneratedWaterTexture",
-            wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Bilinear
-        };
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                float u = x / (float)width;
-                float v = y / (float)height;
-                float edge = Mathf.Min(v, 1f - v) * 2f;
-                float wave = Mathf.Sin(u * Mathf.PI * 8f + v * 2f) * 0.5f + 0.5f;
-                float foam = Mathf.SmoothStep(0f, 0.18f, 1f - edge) * 0.35f;
-                float tone = Mathf.Lerp(0.85f, 1f, wave);
-                texture.SetPixel(x, y, Color.Lerp(Theme.WaterFoam, Theme.Water, Mathf.Clamp01(tone - foam)));
-            }
-        }
-
-        texture.Apply(false, false);
-        AssetDatabase.CreateAsset(texture, path);
-        return texture;
-    }
-
-    private static Material CreateOrUpdateMaterial(string path, Texture texture, Color color)
-    {
-        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(RiverMaterialPath);
         if (material == null)
         {
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null) throw new InvalidOperationException("Sprites/Default shader is unavailable.");
             material = new Material(shader);
-            AssetDatabase.CreateAsset(material, path);
+            AssetDatabase.CreateAsset(material, RiverMaterialPath);
+        }
+        else
+        {
+            material.shader = shader;
         }
 
-        material.mainTexture = texture;
-        material.color = color;
+        material.SetFloat("_EndFade", 0.035f);
+        material.SetFloat("_SideFade", 0.06f);
         EditorUtility.SetDirty(material);
         return material;
     }
 
-    private static Dictionary<string, GameObject> CreateBasePrefabs(
-        Material bankMaterial,
-        Material waterMaterial,
-        List<string> report)
+    private static Dictionary<string, GameObject> CreateBasePrefabs(Material riverMaterial, List<string> report)
     {
-        Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
-
-        prefabs["Leaf"] = CreateLeafPrefab();
-        prefabs["BoundaryWall"] = CreateBoundaryWallPrefab();
-        prefabs["WindBlower"] = CreateWindBlowerPrefab();
-        prefabs["RiverPath"] = CreateRiverPathPrefab(bankMaterial, waterMaterial);
+        Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>
+        {
+            ["Leaf"] = CreateLeafPrefab(),
+            ["BoundaryWall"] = CreateBoundaryWallPrefab(),
+            ["WindBlower"] = CreateWindBlowerPrefab()
+        };
 
         for (int i = 1; i <= 10; i++)
         {
             string key = $"Stone_{i:00}";
             prefabs[key] = CreateObstaclePrefab(key, $"ggj/通用/石头{i}.png");
         }
-
         for (int i = 1; i <= 3; i++)
         {
             string key = $"LongStone_{i:00}";
             prefabs[key] = CreateObstaclePrefab(key, $"ggj/通用/长条石头{i}.png");
         }
-
         for (int i = 1; i <= 2; i++)
         {
             string key = $"Reed_{i:00}";
             prefabs[key] = CreateDecorationPrefab(key, $"ggj/通用/芦苇{i}.png");
         }
-
         for (int i = 1; i <= 9; i++)
         {
             string key = $"Tree_{i:00}";
             prefabs[key] = CreateDecorationPrefab(key, $"ggj地图补充/树{i}.png");
         }
-
-        for (int i = 1; i <= 2; i++)
-        {
-            string key = $"Mountain_{i:00}";
-            prefabs[key] = CreateMountainPrefab(key, $"ggj地图补充/山{i}.png");
-        }
-
         for (int i = 1; i <= 3; i++)
         {
             string pondKey = $"Pond_{i:00}";
             prefabs[pondKey] = CreatePondPrefab(pondKey, $"ggj地图补充/湖{i}.png");
 
             string riverKey = $"RiverArt_{i:00}";
-            prefabs[riverKey] = CreateRiverArtPrefab(riverKey, $"ggj地图补充/河{i}.png");
+            prefabs[riverKey] = CreateRiverArtPrefab(riverKey, $"ggj地图补充/河{i}.png", riverMaterial);
         }
 
         report.Add($"Base prefabs created or updated: {prefabs.Count}");
@@ -410,9 +330,7 @@ public static class LevelPrefabMigration
 
     private static GameObject CreateLeafPrefab()
     {
-        GameObject root = new GameObject("Leaf");
-        root.layer = LeafLayer;
-
+        GameObject root = new GameObject("Leaf") { layer = LeafLayer };
         Sprite[] sprites =
         {
             LoadGameplaySprite("ggj/通用/叶子1.png"),
@@ -432,31 +350,22 @@ public static class LevelPrefabMigration
         body.mass = 0.75f;
         body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         body.interpolation = RigidbodyInterpolation2D.Interpolate;
+        root.AddComponent<CircleCollider2D>().radius = 0.42f;
 
-        CircleCollider2D collider = root.AddComponent<CircleCollider2D>();
-        collider.radius = 0.42f;
-
-        Windable windable = root.AddComponent<Windable>();
-        windable.Configure(0.75f);
-
-        YSort sort = root.AddComponent<YSort>();
-        sort.Configure("Actor", 1000, 3f, true);
-
-        LeafAppearance appearance = root.AddComponent<LeafAppearance>();
-        appearance.Configure(
+        root.AddComponent<Windable>().Configure(0.75f);
+        root.AddComponent<YSort>().Configure("Actor", 1000, 3f, true);
+        root.AddComponent<LeafAppearance>().Configure(
             sprites,
             new Vector2(6.6f, 9.2f),
             new Vector2(5.6f, 8.4f),
             new Vector2(0.45f, 1.05f));
         root.AddComponent<LeafLifecycle>();
-
         return SaveBasePrefab(root, $"{PrefabRoot}/Leaves/Leaf.prefab");
     }
 
     private static GameObject CreateBoundaryWallPrefab()
     {
-        GameObject root = new GameObject("BoundaryWall");
-        root.layer = ObstacleLayer;
+        GameObject root = new GameObject("BoundaryWall") { layer = ObstacleLayer };
         root.AddComponent<BoxCollider2D>().size = Vector2.one;
         return SaveBasePrefab(root, $"{PrefabRoot}/Systems/BoundaryWall.prefab");
     }
@@ -464,55 +373,19 @@ public static class LevelPrefabMigration
     private static GameObject CreateWindBlowerPrefab()
     {
         GameObject root = new GameObject("WindBlower");
-        WindBlower blower = root.AddComponent<WindBlower>();
-        blower.ConfigureLayer(1 << LeafLayer);
+        root.AddComponent<WindBlower>().ConfigureLayer(1 << LeafLayer);
         return SaveBasePrefab(root, $"{PrefabRoot}/Systems/WindBlower.prefab");
-    }
-
-    private static GameObject CreateRiverPathPrefab(Material bankMaterial, Material waterMaterial)
-    {
-        GameObject root = new GameObject("RiverPath");
-        RiverPath2D river = root.AddComponent<RiverPath2D>();
-
-        LineRenderer bank = CreateLineRenderer(root.transform, "Bank", bankMaterial, 2);
-        LineRenderer water = CreateLineRenderer(root.transform, "Water", waterMaterial, 3);
-        water.gameObject.AddComponent<WaterFlow>();
-        river.Configure(
-            new[] { new Vector2(-10f, 0f), new Vector2(10f, 0f) },
-            20f,
-            bankMaterial,
-            waterMaterial,
-            bank,
-            water);
-
-        return SaveBasePrefab(root, $"{PrefabRoot}/Water/RiverPath.prefab");
-    }
-
-    private static LineRenderer CreateLineRenderer(Transform parent, string name, Material material, int order)
-    {
-        GameObject child = new GameObject(name);
-        child.transform.SetParent(parent, false);
-        LineRenderer line = child.AddComponent<LineRenderer>();
-        line.sharedMaterial = material;
-        line.sortingLayerName = "Ground";
-        line.sortingOrder = order;
-        line.useWorldSpace = false;
-        line.textureMode = LineTextureMode.Tile;
-        return line;
     }
 
     private static GameObject CreateObstaclePrefab(string name, string spritePath)
     {
         GameObject root = CreateSpriteRoot(name, spritePath, "Actor", 1000);
         root.layer = ObstacleLayer;
-
         SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
         PolygonCollider2D collider = root.AddComponent<PolygonCollider2D>();
         collider.pathCount = 1;
         collider.SetPath(0, CreateEllipsePath(renderer.sprite.bounds.size, 0.94f, 0.82f, 14));
-
-        YSort sort = root.AddComponent<YSort>();
-        sort.Configure("Actor", 1000, renderer.sprite.bounds.extents.y, false);
+        root.AddComponent<YSort>().Configure("Actor", 1000, renderer.sprite.bounds.extents.y, false);
         return SaveBasePrefab(root, $"{PrefabRoot}/Props/{name}.prefab");
     }
 
@@ -520,14 +393,7 @@ public static class LevelPrefabMigration
     {
         GameObject root = CreateSpriteRoot(name, spritePath, "Actor", 960);
         SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
-        YSort sort = root.AddComponent<YSort>();
-        sort.Configure("Actor", 960, renderer.sprite.bounds.extents.y, false);
-        return SaveBasePrefab(root, $"{PrefabRoot}/Props/{name}.prefab");
-    }
-
-    private static GameObject CreateMountainPrefab(string name, string spritePath)
-    {
-        GameObject root = CreateSpriteRoot(name, spritePath, "Background", 4);
+        root.AddComponent<YSort>().Configure("Actor", 960, renderer.sprite.bounds.extents.y, false);
         return SaveBasePrefab(root, $"{PrefabRoot}/Props/{name}.prefab");
     }
 
@@ -535,7 +401,6 @@ public static class LevelPrefabMigration
     {
         GameObject root = CreateSpriteRoot(name, spritePath, "Ground", 4);
         root.layer = RiverLayer;
-
         SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
         PolygonCollider2D collider = root.AddComponent<PolygonCollider2D>();
         collider.isTrigger = true;
@@ -545,21 +410,23 @@ public static class LevelPrefabMigration
         return SaveBasePrefab(root, $"{PrefabRoot}/Water/{name}.prefab");
     }
 
-    private static GameObject CreateRiverArtPrefab(string name, string spritePath)
+    private static GameObject CreateRiverArtPrefab(string name, string spritePath, Material material)
     {
         GameObject root = CreateSpriteRoot(name, spritePath, "Ground", 2);
         root.layer = RiverLayer;
-
         SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
+        renderer.sharedMaterial = material;
+
         BoxCollider2D collider = root.AddComponent<BoxCollider2D>();
         collider.isTrigger = true;
         collider.size = renderer.sprite.bounds.size;
 
         RiverWaterMask mask = root.AddComponent<RiverWaterMask>();
         mask.Configure(renderer, renderer.sprite.texture);
+        RiverImagePiece piece = root.AddComponent<RiverImagePiece>();
+        piece.Configure(renderer, mask);
         root.AddComponent<RiverFlowOverlay>();
-        RiverCollector collector = root.AddComponent<RiverCollector>();
-        collector.SetWaterMask(mask);
+        root.AddComponent<RiverCollector>().SetWaterMask(mask, 1f);
         return SaveBasePrefab(root, $"{PrefabRoot}/Water/{name}.prefab");
     }
 
@@ -567,7 +434,6 @@ public static class LevelPrefabMigration
     {
         Sprite sprite = LoadGameplaySprite(spritePath);
         if (sprite == null) throw new InvalidOperationException($"Missing Sprite for {spritePath}");
-
         GameObject root = new GameObject(name);
         SpriteRenderer renderer = root.AddComponent<SpriteRenderer>();
         renderer.sprite = sprite;
@@ -584,30 +450,38 @@ public static class LevelPrefabMigration
         return saved;
     }
 
-    private static Vector2[] CreateEllipsePath(Vector2 spriteSize, float widthRatio, float heightRatio, int segments)
+    private static void ValidatePrefabKeys(TiledMapPrototypeImporter.Layout layout, Dictionary<string, GameObject> prefabs)
     {
-        Vector2[] points = new Vector2[Mathf.Max(8, segments)];
-        float radiusX = spriteSize.x * widthRatio * 0.5f;
-        float radiusY = spriteSize.y * heightRatio * 0.5f;
-
-        for (int i = 0; i < points.Length; i++)
+        ValidateObjectKeys(layout.Obstacles, prefabs);
+        ValidateObjectKeys(layout.Decorations, prefabs);
+        ValidateObjectKeys(layout.Landmarks, prefabs);
+        string[] required = { "Leaf", "BoundaryWall", "WindBlower", "Pond_01", "RiverArt_01", "RiverArt_02", "RiverArt_03" };
+        for (int i = 0; i < required.Length; i++)
         {
-            float angle = i / (float)points.Length * Mathf.PI * 2f;
-            points[i] = new Vector2(Mathf.Cos(angle) * radiusX, Mathf.Sin(angle) * radiusY);
+            if (!prefabs.TryGetValue(required[i], out GameObject prefab) || prefab == null)
+                throw new InvalidOperationException($"Missing generated prefab key: {required[i]}");
         }
+    }
 
-        return points;
+    private static void ValidateObjectKeys(TiledMapPrototypeImporter.MapObject[] objects, Dictionary<string, GameObject> prefabs)
+    {
+        for (int i = 0; i < objects.Length; i++)
+        {
+            if (!prefabs.TryGetValue(objects[i].PrefabKey, out GameObject prefab) || prefab == null)
+                throw new InvalidOperationException($"TMJ object {objects[i].Name} references missing prefabKey {objects[i].PrefabKey}.");
+        }
     }
 
     private static LevelRoot CreateLevelPrefab(
-        LevelSpec spec,
+        ModeSpec mode,
+        TiledMapPrototypeImporter.Layout layout,
         Dictionary<string, GameObject> prefabs,
-        Material bankMaterial,
-        Material waterMaterial,
+        TileBase greenTile,
+        TileBase yellowTile,
         bool force,
         out bool skipped)
     {
-        string path = $"{LevelPrefabRoot}/Level_{spec.Id}.prefab";
+        string path = $"{LevelPrefabRoot}/Level_{mode.Id}.prefab";
         LevelRoot existing = AssetDatabase.LoadAssetAtPath<LevelRoot>(path);
         if (existing != null && !force)
         {
@@ -616,31 +490,45 @@ public static class LevelPrefabMigration
         }
 
         skipped = false;
-        GameObject rootObject = new GameObject($"Level_{spec.Id}");
+        GameObject rootObject = new GameObject($"Level_{mode.Id}");
         LevelRoot levelRoot = rootObject.AddComponent<LevelRoot>();
 
-        GroundTilemapGenerator ground = CreateGround(rootObject.transform, spec.Bounds, spec.GroundTile);
-        CreateBoundaries(rootObject.transform, spec.Bounds, prefabs["BoundaryWall"]);
-        CreateBoundaryArt(rootObject.transform, spec.Bounds, prefabs);
-        CreateWater(rootObject.transform, spec, prefabs, bankMaterial, waterMaterial);
-        CreatePlacedObjects(rootObject.transform, "Obstacles", spec.Obstacles, prefabs);
-        CreatePlacedObjects(rootObject.transform, "Decorations", spec.Decorations, prefabs);
+        GroundTilemapGenerator ground = CreateGround(rootObject.transform, layout, greenTile, yellowTile);
+        CreateBoundaries(rootObject.transform, layout.Bounds, prefabs["BoundaryWall"]);
+        CreateWater(rootObject.transform, layout, prefabs);
+        CreatePlacedObjects(rootObject.transform, "Obstacles", layout.Obstacles, prefabs, true);
+        CreatePlacedObjects(rootObject.transform, "Decorations", layout.Decorations, prefabs, false);
+        CreatePlacedObjects(rootObject.transform, "Landmarks", layout.Landmarks, prefabs, false);
 
         WindBlower windBlower = InstantiatePrefab(prefabs["WindBlower"], rootObject.transform).GetComponent<WindBlower>();
-        LeafSpawner spawner = CreateLeafSpawner(rootObject.transform, spec.Bounds, prefabs["Leaf"]);
+        windBlower.name = "WindBlower";
+        windBlower.transform.localPosition = layout.WindStart;
+        LeafSpawner spawner = CreateLeafSpawner(rootObject.transform, layout, prefabs["Leaf"]);
+
+        MapPrototypeGizmos gizmos = rootObject.AddComponent<MapPrototypeGizmos>();
+        MapPrototypeGizmos.Region[] guideRegions = new MapPrototypeGizmos.Region[layout.Regions.Length];
+        for (int i = 0; i < guideRegions.Length; i++) guideRegions[i] = new MapPrototypeGizmos.Region(layout.Regions[i].RegionId, layout.Regions[i].Bounds);
+        gizmos.Configure(
+            TiledMapPrototypeImporter.SourceAssetPath,
+            layout.SourceSha256,
+            layout.RiverPoints,
+            guideRegions,
+            layout.CameraStart,
+            layout.WindStart);
 
         levelRoot.Configure(
-            spec.Id,
-            spec.Bounds,
-            spec.InitialCameraSize,
-            spec.MinCameraSize,
-            spec.MaxCameraSize,
-            spec.InitialLeafCount,
-            spec.TimeLimitSeconds,
-            spec.Endless,
-            spec.EndlessSpawnBatch,
-            spec.EndlessSpawnInterval,
-            spec.EndlessMaxLeaves,
+            mode.Id,
+            layout.Bounds,
+            layout.CameraStart,
+            16f,
+            10f,
+            33f,
+            mode.InitialLeafCount,
+            mode.TimeLimitSeconds,
+            mode.Endless,
+            mode.EndlessSpawnBatch,
+            mode.EndlessSpawnInterval,
+            mode.EndlessMaxLeaves,
             ground,
             spawner,
             windBlower);
@@ -651,7 +539,11 @@ public static class LevelPrefabMigration
         return saved.GetComponent<LevelRoot>();
     }
 
-    private static GroundTilemapGenerator CreateGround(Transform parent, Rect bounds, TileBase tile)
+    private static GroundTilemapGenerator CreateGround(
+        Transform parent,
+        TiledMapPrototypeImporter.Layout layout,
+        TileBase greenTile,
+        TileBase yellowTile)
     {
         GameObject gridObject = new GameObject("GroundGrid");
         gridObject.transform.SetParent(parent, false);
@@ -662,7 +554,20 @@ public static class LevelPrefabMigration
         Tilemap tilemap = tilemapObject.AddComponent<Tilemap>();
         tilemapObject.AddComponent<TilemapRenderer>();
         GroundTilemapGenerator generator = tilemapObject.AddComponent<GroundTilemapGenerator>();
-        generator.Configure(bounds, tile, tilemap, grid);
+
+        GroundTilemapGenerator.RegionHint[] hints = new GroundTilemapGenerator.RegionHint[layout.Regions.Length];
+        for (int i = 0; i < hints.Length; i++)
+            hints[i] = new GroundTilemapGenerator.RegionHint(layout.Regions[i].RegionId, layout.Regions[i].Bounds, layout.Regions[i].GreenBias);
+
+        generator.Configure(
+            layout.Bounds,
+            greenTile,
+            yellowTile,
+            tilemap,
+            grid,
+            GroundSeed,
+            GroundPatchWorldSize,
+            hints);
         generator.Rebuild();
         return generator;
     }
@@ -671,7 +576,7 @@ public static class LevelPrefabMigration
     {
         GameObject group = new GameObject("Boundaries");
         group.transform.SetParent(parent, false);
-        const float thickness = 4f;
+        const float thickness = 2f;
 
         PlaceWall(group.transform, wallPrefab, "Wall_Left",
             new Vector2(bounds.xMin - thickness * 0.5f, bounds.center.y),
@@ -695,145 +600,170 @@ public static class LevelPrefabMigration
         instance.transform.localScale = new Vector3(size.x, size.y, 1f);
     }
 
-    private static void CreateBoundaryArt(Transform parent, Rect bounds, Dictionary<string, GameObject> prefabs)
-    {
-        GameObject group = new GameObject("BoundaryArt");
-        group.transform.SetParent(parent, false);
-
-        PlaceVisual(group.transform, prefabs["Mountain_01"], "NorthMountain",
-            new Vector2(bounds.center.x, bounds.yMax + 18f),
-            new Vector2(bounds.width, 70f),
-            0f,
-            false);
-        PlaceVisual(group.transform, prefabs["Mountain_02"], "SouthMountain",
-            new Vector2(bounds.center.x, bounds.yMin - 18f),
-            new Vector2(bounds.width, 64f),
-            180f,
-            false);
-    }
-
     private static void CreateWater(
         Transform parent,
-        LevelSpec spec,
-        Dictionary<string, GameObject> prefabs,
-        Material bankMaterial,
-        Material waterMaterial)
+        TiledMapPrototypeImporter.Layout layout,
+        Dictionary<string, GameObject> prefabs)
     {
         GameObject group = new GameObject("Water");
         group.transform.SetParent(parent, false);
+        CreateRiverImageAssembly(group.transform, layout, prefabs);
+        CreateLake(group.transform, layout.Lake, prefabs["Pond_01"]);
+    }
 
-        if (!string.IsNullOrEmpty(spec.RiverArtKey))
-        {
-            GameObject river = InstantiatePrefab(prefabs[spec.RiverArtKey], group.transform);
-            river.name = "RiverArt";
-            SpriteRenderer renderer = river.GetComponent<SpriteRenderer>();
-            Vector2 fittedSize = GetAspectFitSize(spec.Bounds.size, renderer.sprite.bounds.size);
-            ScaleToWorldSize(river, fittedSize);
-            river.transform.localPosition = spec.Bounds.center;
-        }
-        else
-        {
-            GameObject riverObject = InstantiatePrefab(prefabs["RiverPath"], group.transform);
-            riverObject.name = "RiverPath";
-            RiverPath2D river = riverObject.GetComponent<RiverPath2D>();
-            LineRenderer bank = riverObject.transform.Find("Bank").GetComponent<LineRenderer>();
-            LineRenderer water = riverObject.transform.Find("Water").GetComponent<LineRenderer>();
-            river.Configure(spec.RiverPoints, spec.RiverWidth, bankMaterial, waterMaterial, bank, water);
-        }
+    private static void CreateRiverImageAssembly(
+        Transform parent,
+        TiledMapPrototypeImporter.Layout layout,
+        Dictionary<string, GameObject> prefabs)
+    {
+        GameObject riverGroup = new GameObject("MainRiver_ImagePieces");
+        riverGroup.transform.SetParent(parent, false);
 
-        for (int i = 0; i < spec.Ponds.Length; i++)
+        string[] sequence =
         {
-            PondPlacement pond = spec.Ponds[i];
-            PlaceVisual(group.transform, prefabs[pond.PrefabKey], $"Pond_{i + 1}", pond.Position, pond.Size, 0f, false);
+            "RiverArt_02", "RiverArt_03", "RiverArt_01", "RiverArt_02", "RiverArt_03", "RiverArt_01"
+        };
+        float routeLength = GetPolylineLength(layout.RiverPoints);
+        const float overlap = 0.75f;
+
+        for (int i = 0; i < sequence.Length; i++)
+        {
+            float nominalStart = routeLength * i / sequence.Length;
+            float nominalEnd = routeLength * (i + 1) / sequence.Length;
+            float startDistance = Mathf.Max(0f, nominalStart - (i > 0 ? overlap * 0.5f : 0f));
+            float endDistance = Mathf.Min(routeLength, nominalEnd + (i < sequence.Length - 1 ? overlap * 0.5f : 0f));
+            Vector2 targetEntry = PointAtDistance(layout.RiverPoints, startDistance);
+            Vector2 targetExit = PointAtDistance(layout.RiverPoints, endDistance);
+
+            GameObject instance = InstantiatePrefab(prefabs[sequence[i]], riverGroup.transform);
+            instance.name = $"RiverPiece_{i + 1:00}_{sequence[i]}";
+            RiverImagePiece piece = instance.GetComponent<RiverImagePiece>();
+            if (piece == null) throw new InvalidOperationException($"{sequence[i]} has no RiverImagePiece component.");
+            FitRiverPiece(instance.transform, piece, targetEntry, targetExit);
+
+            SpriteRenderer renderer = instance.GetComponent<SpriteRenderer>();
+            if (renderer != null) renderer.sortingOrder = 2 + i;
+            RiverCollector collector = instance.GetComponent<RiverCollector>();
+            RiverWaterMask mask = instance.GetComponent<RiverWaterMask>();
+            if (collector != null) collector.SetWaterMask(mask, layout.RiverCollectorMargin);
+        }
+    }
+
+    private static void FitRiverPiece(Transform transform, RiverImagePiece piece, Vector2 targetEntry, Vector2 targetExit)
+    {
+        Vector2 localDelta = piece.ExitAnchor - piece.EntryAnchor;
+        Vector2 targetDelta = targetExit - targetEntry;
+        if (localDelta.sqrMagnitude < 0.001f || targetDelta.sqrMagnitude < 0.001f)
+            throw new InvalidOperationException("River image piece has invalid entry/exit anchors.");
+
+        float scale = targetDelta.magnitude / localDelta.magnitude;
+        float rotation = Mathf.Atan2(targetDelta.y, targetDelta.x) * Mathf.Rad2Deg
+            - Mathf.Atan2(localDelta.y, localDelta.x) * Mathf.Rad2Deg;
+        transform.localScale = new Vector3(scale, scale, 1f);
+        transform.localRotation = Quaternion.Euler(0f, 0f, rotation);
+        Vector2 transformedEntry = (Vector2)(transform.localRotation * (piece.EntryAnchor * scale));
+        transform.localPosition = targetEntry - transformedEntry;
+    }
+
+    private static void CreateLake(Transform parent, TiledMapPrototypeImporter.Lake lake, GameObject pondPrefab)
+    {
+        GameObject root = new GameObject("Lake_" + lake.Name) { layer = RiverLayer };
+        root.transform.SetParent(parent, false);
+        root.transform.localPosition = lake.Position;
+
+        PolygonCollider2D waterCollider = root.AddComponent<PolygonCollider2D>();
+        waterCollider.isTrigger = true;
+        waterCollider.pathCount = 1;
+        waterCollider.SetPath(0, CreateEllipsePath(lake.Size, 1f, 1f, 32));
+        root.AddComponent<RiverCollector>();
+
+        GameObject visual = InstantiatePrefab(pondPrefab, root.transform);
+        visual.name = "Pond_01_Visual";
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localRotation = Quaternion.identity;
+        SetLayerRecursively(visual, 0);
+        Collider2D[] visualColliders = visual.GetComponentsInChildren<Collider2D>(true);
+        for (int i = 0; i < visualColliders.Length; i++) visualColliders[i].enabled = false;
+        RiverCollector[] visualCollectors = visual.GetComponentsInChildren<RiverCollector>(true);
+        for (int i = 0; i < visualCollectors.Length; i++) visualCollectors[i].enabled = false;
+
+        SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
+        if (renderer != null && renderer.sprite != null)
+        {
+            Vector2 spriteSize = renderer.sprite.bounds.size;
+            float scale = Mathf.Min(lake.Size.x / spriteSize.x, lake.Size.y / spriteSize.y);
+            visual.transform.localScale = new Vector3(scale, scale, 1f);
+            renderer.sortingLayerName = "Ground";
+            renderer.sortingOrder = 10;
         }
     }
 
     private static void CreatePlacedObjects(
         Transform parent,
         string groupName,
-        PropPlacement[] placements,
-        Dictionary<string, GameObject> prefabs)
+        TiledMapPrototypeImporter.MapObject[] placements,
+        Dictionary<string, GameObject> prefabs,
+        bool obstacleGroup)
     {
         GameObject group = new GameObject(groupName);
         group.transform.SetParent(parent, false);
 
         for (int i = 0; i < placements.Length; i++)
         {
-            PropPlacement placement = placements[i];
-            PlaceVisual(
-                group.transform,
-                prefabs[placement.PrefabKey],
-                placement.Name,
-                placement.Position,
-                placement.Size,
-                placement.Rotation,
-                true);
-        }
-    }
+            TiledMapPrototypeImporter.MapObject placement = placements[i];
+            GameObject instance = InstantiatePrefab(prefabs[placement.PrefabKey], group.transform);
+            instance.name = placement.Name;
+            instance.transform.localPosition = placement.Position;
+            instance.transform.localRotation = Quaternion.Euler(0f, 0f, placement.Rotation);
+            ScaleToWorldSize(instance, placement.Size);
 
-    private static GameObject PlaceVisual(
-        Transform parent,
-        GameObject prefab,
-        string name,
-        Vector2 position,
-        Vector2 size,
-        float rotation,
-        bool updateYSort)
-    {
-        GameObject instance = InstantiatePrefab(prefab, parent);
-        instance.name = name;
-        instance.transform.localPosition = position;
-        instance.transform.localRotation = Quaternion.Euler(0f, 0f, rotation);
-        ScaleToWorldSize(instance, size);
-
-        if (updateYSort)
-        {
-            YSort sort = instance.GetComponent<YSort>();
             SpriteRenderer renderer = instance.GetComponent<SpriteRenderer>();
+            YSort sort = instance.GetComponent<YSort>();
             if (sort != null && renderer != null)
-            {
-                sort.Configure(renderer.sortingLayerName, renderer.sortingOrder, size.y * 0.5f, false);
-            }
+                sort.Configure(renderer.sortingLayerName, renderer.sortingOrder, placement.Size.y * 0.5f, false);
+
+            if (obstacleGroup && placement.BlocksLeaf) AddObstacleFootprints(instance, placement.PrefabKey, renderer);
         }
-
-        return instance;
     }
 
-    private static void ScaleToWorldSize(GameObject instance, Vector2 worldSize)
+    private static void AddObstacleFootprints(GameObject instance, string prefabKey, SpriteRenderer renderer)
     {
-        SpriteRenderer renderer = instance.GetComponent<SpriteRenderer>();
         if (renderer == null || renderer.sprite == null) return;
+        instance.layer = ObstacleLayer;
 
-        Vector2 spriteSize = renderer.sprite.bounds.size;
-        instance.transform.localScale = new Vector3(
-            worldSize.x / Mathf.Max(0.001f, spriteSize.x),
-            worldSize.y / Mathf.Max(0.001f, spriteSize.y),
-            1f);
+        GameObject exclusion = new GameObject("SpawnExclusion") { layer = ObstacleLayer };
+        exclusion.transform.SetParent(instance.transform, false);
+        BoxCollider2D exclusionCollider = exclusion.AddComponent<BoxCollider2D>();
+        exclusionCollider.isTrigger = true;
+        exclusionCollider.size = renderer.sprite.bounds.size;
+        exclusionCollider.offset = renderer.sprite.bounds.center;
+
+        if (!prefabKey.StartsWith("Tree_", StringComparison.Ordinal)) return;
+        GameObject physical = new GameObject("TreeTrunkCollider") { layer = ObstacleLayer };
+        physical.transform.SetParent(instance.transform, false);
+        CapsuleCollider2D trunk = physical.AddComponent<CapsuleCollider2D>();
+        Bounds bounds = renderer.sprite.bounds;
+        trunk.direction = CapsuleDirection2D.Vertical;
+        trunk.size = new Vector2(bounds.size.x * 0.28f, bounds.size.y * 0.24f);
+        trunk.offset = new Vector2(bounds.center.x, bounds.min.y + bounds.size.y * 0.22f);
     }
 
-    private static LeafSpawner CreateLeafSpawner(Transform parent, Rect bounds, GameObject leafPrefab)
+    private static LeafSpawner CreateLeafSpawner(
+        Transform parent,
+        TiledMapPrototypeImporter.Layout layout,
+        GameObject leafPrefab)
     {
         GameObject root = new GameObject("LeafSpawner");
         root.transform.SetParent(parent, false);
         LeafSpawner spawner = root.AddComponent<LeafSpawner>();
-
-        GameObject areaObject = new GameObject("LeafSpawnArea");
-        areaObject.transform.SetParent(root.transform, false);
-        areaObject.transform.localPosition = bounds.center;
-        BoxCollider2D areaCollider = areaObject.AddComponent<BoxCollider2D>();
-        areaCollider.isTrigger = true;
-        areaCollider.size = new Vector2(
-            Mathf.Max(1f, bounds.width - 12f),
-            Mathf.Max(1f, bounds.height - 12f));
-        LeafSpawnArea area = areaObject.AddComponent<LeafSpawnArea>();
-        area.Configure(areaCollider, (1 << ObstacleLayer) | (1 << RiverLayer), 0.65f, 220);
-
         GameObject leafContainer = new GameObject("Leaves");
         leafContainer.transform.SetParent(root.transform, false);
-
         spawner.Configure(
             leafPrefab.GetComponent<LeafLifecycle>(),
-            new[] { area },
+            layout.Bounds,
+            (1 << ObstacleLayer) | (1 << RiverLayer),
+            layout.ScatterClearance,
+            260,
             leafContainer.transform);
         return spawner;
     }
@@ -843,6 +773,58 @@ public static class LevelPrefabMigration
         GameObject instance = PrefabUtility.InstantiatePrefab(prefab, parent) as GameObject;
         if (instance == null) throw new InvalidOperationException($"Failed to instantiate prefab {prefab.name}");
         return instance;
+    }
+
+    private static void ScaleToWorldSize(GameObject instance, Vector2 worldSize)
+    {
+        SpriteRenderer renderer = instance.GetComponent<SpriteRenderer>();
+        if (renderer == null || renderer.sprite == null) return;
+        Vector2 spriteSize = renderer.sprite.bounds.size;
+        instance.transform.localScale = new Vector3(
+            worldSize.x / Mathf.Max(0.001f, spriteSize.x),
+            worldSize.y / Mathf.Max(0.001f, spriteSize.y),
+            1f);
+    }
+
+    private static void SetLayerRecursively(GameObject root, int layer)
+    {
+        root.layer = layer;
+        for (int i = 0; i < root.transform.childCount; i++) SetLayerRecursively(root.transform.GetChild(i).gameObject, layer);
+    }
+
+    private static float GetPolylineLength(Vector2[] points)
+    {
+        float length = 0f;
+        for (int i = 1; i < points.Length; i++) length += Vector2.Distance(points[i - 1], points[i]);
+        return length;
+    }
+
+    private static Vector2 PointAtDistance(Vector2[] points, float distance)
+    {
+        if (points == null || points.Length == 0) return Vector2.zero;
+        if (distance <= 0f) return points[0];
+        float remaining = distance;
+        for (int i = 1; i < points.Length; i++)
+        {
+            float segmentLength = Vector2.Distance(points[i - 1], points[i]);
+            if (remaining <= segmentLength)
+                return Vector2.Lerp(points[i - 1], points[i], segmentLength > 0f ? remaining / segmentLength : 0f);
+            remaining -= segmentLength;
+        }
+        return points[points.Length - 1];
+    }
+
+    private static Vector2[] CreateEllipsePath(Vector2 size, float widthRatio, float heightRatio, int segments)
+    {
+        Vector2[] points = new Vector2[Mathf.Max(8, segments)];
+        float radiusX = size.x * widthRatio * 0.5f;
+        float radiusY = size.y * heightRatio * 0.5f;
+        for (int i = 0; i < points.Length; i++)
+        {
+            float angle = i / (float)points.Length * Mathf.PI * 2f;
+            points[i] = new Vector2(Mathf.Cos(angle) * radiusX, Mathf.Sin(angle) * radiusY);
+        }
+        return points;
     }
 
     private static LevelCatalog CreateOrUpdateCatalog(Dictionary<LevelId, LevelRoot> levels)
@@ -866,26 +848,19 @@ public static class LevelPrefabMigration
         return catalog;
     }
 
-    private static void ValidateMigration(LevelCatalog catalog, List<string> report)
+    private static void ValidateMigration(
+        LevelCatalog catalog,
+        TiledMapPrototypeImporter.Layout layout,
+        List<string> gameplayArtFiles,
+        List<string> report)
     {
         List<string> errors = new List<string>();
-
-        for (int i = 0; i < GameplayArtFiles.Length; i++)
+        for (int i = 0; i < gameplayArtFiles.Count; i++)
         {
-            if (LoadGameplaySprite(GameplayArtFiles[i]) == null)
-            {
-                errors.Add($"Missing imported Sprite: {GameplayArtFiles[i]}");
-            }
+            if (LoadGameplaySprite(gameplayArtFiles[i]) == null) errors.Add($"Missing imported Sprite: {gameplayArtFiles[i]}");
         }
 
-        LevelId[] ids =
-        {
-            LevelId.SimpleSmall,
-            LevelId.ClassicLarge,
-            LevelId.TimedChallenge,
-            LevelId.Endless
-        };
-
+        LevelId[] ids = { LevelId.SimpleSmall, LevelId.ClassicLarge, LevelId.TimedChallenge, LevelId.Endless };
         for (int i = 0; i < ids.Length; i++)
         {
             LevelRoot prefab = catalog.GetPrefab(ids[i]);
@@ -895,49 +870,62 @@ public static class LevelPrefabMigration
                 continue;
             }
 
-            GroundTilemapGenerator ground = prefab.GetComponentInChildren<GroundTilemapGenerator>(true);
-            LeafSpawner spawner = prefab.GetComponentInChildren<LeafSpawner>(true);
-            LeafSpawnArea area = prefab.GetComponentInChildren<LeafSpawnArea>(true);
-            WindBlower blower = prefab.GetComponentInChildren<WindBlower>(true);
-            Tilemap tilemap = prefab.GetComponentInChildren<Tilemap>(true);
+            if (prefab.MapBounds != layout.Bounds) errors.Add($"{ids[i]} has incorrect 120x90 map bounds");
+            if (Vector2.Distance(prefab.CameraStart, layout.CameraStart) > 0.01f) errors.Add($"{ids[i]} has incorrect CameraStart");
+            MapPrototypeGizmos metadata = prefab.GetComponent<MapPrototypeGizmos>();
+            if (metadata == null || metadata.SourceSha256 != layout.SourceSha256) errors.Add($"{ids[i]} has stale/missing TMJ metadata");
 
-            if (ground == null) errors.Add($"{ids[i]} has no GroundTilemapGenerator");
-            if (spawner == null) errors.Add($"{ids[i]} has no LeafSpawner");
-            if (area == null) errors.Add($"{ids[i]} has no LeafSpawnArea");
-            if (blower == null) errors.Add($"{ids[i]} has no WindBlower");
-            if (tilemap == null || tilemap.GetUsedTilesCount() == 0) errors.Add($"{ids[i]} has an empty Tilemap");
+            GroundTilemapGenerator ground = prefab.GetComponentInChildren<GroundTilemapGenerator>(true);
+            if (ground == null)
+            {
+                errors.Add($"{ids[i]} has no mixed ground generator");
+            }
+            else
+            {
+                ground.CountTiles(out int green, out int yellow);
+                if (green == 0 || yellow == 0 || Mathf.Abs(green - yellow) > 1) errors.Add($"{ids[i]} ground is not 50/50 green/yellow");
+                float overall = green / (float)Mathf.Max(1, green + yellow);
+                for (int regionIndex = 0; regionIndex < layout.Regions.Length; regionIndex++)
+                {
+                    TiledMapPrototypeImporter.Region region = layout.Regions[regionIndex];
+                    float ratio = ground.GetGreenRatio(region.Bounds);
+                    if (region.RegionId == "Meadow" && ratio >= overall) errors.Add($"{ids[i]} Meadow is not yellow-biased");
+                    if (region.RegionId != "Meadow" && ratio <= overall) errors.Add($"{ids[i]} {region.RegionId} is not green-biased");
+                }
+            }
+
+            RiverImagePiece[] pieces = prefab.GetComponentsInChildren<RiverImagePiece>(true);
+            if (pieces.Length != 6) errors.Add($"{ids[i]} has {pieces.Length} river image pieces instead of 6");
+            if (prefab.transform.Find("BoundaryArt") != null) errors.Add($"{ids[i]} still contains old boundary art");
+            if (prefab.transform.Find("LeafSpawner/LeafSpawnArea") != null) errors.Add($"{ids[i]} still contains a fixed LeafSpawnArea");
+
+            Transform water = prefab.transform.Find("Water");
+            if (water == null || water.Find("Lake_" + layout.Lake.Name) == null) errors.Add($"{ids[i]} is missing the TMJ lake");
+            CheckGroupCount(prefab.transform, "Obstacles", layout.Obstacles.Length, ids[i], errors);
+            CheckGroupCount(prefab.transform, "Decorations", layout.Decorations.Length, ids[i], errors);
+            CheckGroupCount(prefab.transform, "Landmarks", layout.Landmarks.Length, ids[i], errors);
+
+            WindBlower wind = prefab.GetComponentInChildren<WindBlower>(true);
+            if (wind == null || Vector2.Distance(wind.transform.localPosition, layout.WindStart) > 0.01f)
+                errors.Add($"{ids[i]} has incorrect WindStart");
+            if (prefab.GetComponentInChildren<LeafSpawner>(true) == null) errors.Add($"{ids[i]} has no full-map LeafSpawner");
         }
 
         report.Add($"Validation errors: {errors.Count}");
         for (int i = 0; i < errors.Count; i++) report.Add("- " + errors[i]);
-        if (errors.Count > 0)
-        {
-            throw new InvalidOperationException($"Migration validation found {errors.Count} error(s). {string.Join(" | ", errors)}");
-        }
+        if (errors.Count > 0) throw new InvalidOperationException($"Migration validation found {errors.Count} error(s): {string.Join(" | ", errors)}");
+    }
+
+    private static void CheckGroupCount(Transform root, string name, int expected, LevelId id, List<string> errors)
+    {
+        Transform group = root.Find(name);
+        if (group == null || group.childCount != expected)
+            errors.Add($"{id} {name} count is {(group == null ? 0 : group.childCount)}, expected {expected}");
     }
 
     private static Sprite LoadGameplaySprite(string relativePath)
     {
         return AssetDatabase.LoadAssetAtPath<Sprite>(GameplayArtRoot + relativePath);
-    }
-
-    private static Texture2D LoadGameplayTexture(string relativePath)
-    {
-        return AssetDatabase.LoadAssetAtPath<Texture2D>(GameplayArtRoot + relativePath);
-    }
-
-    private static Vector2 GetAspectFitSize(Vector2 targetSize, Vector2 spriteSize)
-    {
-        float spriteAspect = spriteSize.x / Mathf.Max(0.001f, spriteSize.y);
-        float width = targetSize.x;
-        float height = width / spriteAspect;
-        if (height > targetSize.y)
-        {
-            height = targetSize.y;
-            width = height * spriteAspect;
-        }
-
-        return new Vector2(width, height);
     }
 
     private static string ToAbsolutePath(string assetPath)
@@ -951,238 +939,48 @@ public static class LevelPrefabMigration
         string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
         string reportDirectory = Path.GetFullPath(Path.Combine(projectRoot, "..", "logs"));
         Directory.CreateDirectory(reportDirectory);
-        string reportPath = Path.Combine(reportDirectory, "level-prefab-migration-report.txt");
+        string reportPath = Path.Combine(reportDirectory, "tiled-map-prototype-migration-report.txt");
         File.WriteAllLines(reportPath, lines.ToArray());
         return reportPath;
     }
 
-    private static LevelSpec[] CreateLevelSpecs(TileBase greenTile, TileBase yellowTile)
+    private static ModeSpec[] CreateModeSpecs()
     {
         return new[]
         {
-            CreateSimpleSmallSpec(greenTile),
-            CreateClassicLargeSpec(yellowTile),
-            CreateTimedChallengeSpec(greenTile),
-            CreateEndlessSpec(yellowTile)
+            new ModeSpec(LevelId.SimpleSmall, 160, 0f, false, 0, 1.8f, 260),
+            new ModeSpec(LevelId.ClassicLarge, 260, 0f, false, 0, 1.8f, 260),
+            new ModeSpec(LevelId.TimedChallenge, 120, 180f, false, 0, 1.8f, 260),
+            new ModeSpec(LevelId.Endless, 130, 0f, true, 8, 1.8f, 260)
         };
     }
 
-    private static LevelSpec CreateSimpleSmallSpec(TileBase groundTile)
+    private readonly struct ModeSpec
     {
-        Rect bounds = new Rect(-125f, -125f, 250f, 250f);
-        return new LevelSpec
+        public readonly LevelId Id;
+        public readonly int InitialLeafCount;
+        public readonly float TimeLimitSeconds;
+        public readonly bool Endless;
+        public readonly int EndlessSpawnBatch;
+        public readonly float EndlessSpawnInterval;
+        public readonly int EndlessMaxLeaves;
+
+        public ModeSpec(
+            LevelId id,
+            int initialLeafCount,
+            float timeLimitSeconds,
+            bool endless,
+            int endlessSpawnBatch,
+            float endlessSpawnInterval,
+            int endlessMaxLeaves)
         {
-            Id = LevelId.SimpleSmall,
-            Bounds = bounds,
-            GroundTile = groundTile,
-            InitialLeafCount = 160,
-            RiverWidth = 58f,
-            InitialCameraSize = 34f,
-            MinCameraSize = 22f,
-            MaxCameraSize = 66f,
-            RiverArtKey = "RiverArt_02",
-            RiverPoints = new Vector2[0],
-            Ponds = new[]
-            {
-                new PondPlacement("Pond_01", new Vector2(74f, -16f), new Vector2(42f, 22f)),
-                new PondPlacement("Pond_02", new Vector2(70f, -72f), new Vector2(42f, 24f)),
-                new PondPlacement("Pond_03", new Vector2(25f, -92f), new Vector2(34f, 24f))
-            },
-            Obstacles = new[]
-            {
-                new PropPlacement("StoneA", "Stone_01", new Vector2(-96f, -76f), new Vector2(34f, 24f), 35f),
-                new PropPlacement("StoneB", "Stone_02", new Vector2(-69f, -62f), new Vector2(34f, 22f), 12f),
-                new PropPlacement("StoneC", "Stone_03", new Vector2(-45f, -86f), new Vector2(36f, 24f), -8f)
-            },
-            Decorations = new[]
-            {
-                new PropPlacement("ReedA", "Reed_01", new Vector2(91f, -71f), new Vector2(13f, 16f), 0f),
-                new PropPlacement("TreeA", "Tree_01", new Vector2(92f, 88f), new Vector2(18f, 17f), 0f),
-                new PropPlacement("TreeB", "Tree_02", new Vector2(-95f, 86f), new Vector2(15f, 22f), 0f)
-            }
-        };
-    }
-
-    private static LevelSpec CreateClassicLargeSpec(TileBase groundTile)
-    {
-        Rect bounds = new Rect(-170f, -135f, 340f, 270f);
-        return new LevelSpec
-        {
-            Id = LevelId.ClassicLarge,
-            Bounds = bounds,
-            GroundTile = groundTile,
-            InitialLeafCount = 260,
-            RiverWidth = 28f,
-            InitialCameraSize = 42f,
-            MinCameraSize = 28f,
-            MaxCameraSize = 86f,
-            RiverPoints = new[]
-            {
-                new Vector2(bounds.xMin - 42f, bounds.yMin + 72f),
-                new Vector2(bounds.xMin + 42f, bounds.yMin + 55f),
-                new Vector2(bounds.xMin + 98f, bounds.yMin + 62f),
-                new Vector2(bounds.xMin + 136f, bounds.yMin + 102f),
-                new Vector2(bounds.xMin + 202f, bounds.yMin + 116f),
-                new Vector2(bounds.xMin + 260f, bounds.yMin + 102f),
-                new Vector2(bounds.xMax + 42f, bounds.yMin + 122f)
-            },
-            Ponds = new[]
-            {
-                new PondPlacement("Pond_03", new Vector2(-124f, -116f), new Vector2(46f, 28f)),
-                new PondPlacement("Pond_01", new Vector2(124f, -104f), new Vector2(56f, 30f))
-            },
-            Obstacles = new[]
-            {
-                new PropPlacement("StoneA", "LongStone_02", new Vector2(-132f, 70f), new Vector2(48f, 22f), -8f),
-                new PropPlacement("StoneB", "LongStone_03", new Vector2(58f, 76f), new Vector2(52f, 22f), 8f),
-                new PropPlacement("StoneC", "Stone_05", new Vector2(142f, 46f), new Vector2(42f, 28f), -10f),
-                new PropPlacement("StoneD", "LongStone_01", new Vector2(-28f, 24f), new Vector2(62f, 18f), 5f)
-            },
-            Decorations = new[]
-            {
-                new PropPlacement("TreeA", "Tree_03", new Vector2(-138f, 88f), new Vector2(23f, 22f), 0f),
-                new PropPlacement("TreeB", "Tree_04", new Vector2(136f, 92f), new Vector2(21f, 24f), 0f),
-                new PropPlacement("TreeC", "Tree_05", new Vector2(-130f, -100f), new Vector2(21f, 26f), 0f),
-                new PropPlacement("ReedA", "Reed_02", new Vector2(147f, -98f), new Vector2(16f, 18f), 0f),
-                new PropPlacement("ReedB", "Reed_01", new Vector2(-96f, -105f), new Vector2(14f, 17f), 0f)
-            }
-        };
-    }
-
-    private static LevelSpec CreateTimedChallengeSpec(TileBase groundTile)
-    {
-        Rect bounds = new Rect(-125f, -95f, 250f, 190f);
-        return new LevelSpec
-        {
-            Id = LevelId.TimedChallenge,
-            Bounds = bounds,
-            GroundTile = groundTile,
-            InitialLeafCount = 120,
-            RiverWidth = 18f,
-            InitialCameraSize = 30f,
-            MinCameraSize = 18f,
-            MaxCameraSize = 58f,
-            TimeLimitSeconds = 180f,
-            RiverPoints = new[]
-            {
-                new Vector2(bounds.xMin - 32f, bounds.yMax + 36f),
-                new Vector2(bounds.xMin + 18f, bounds.yMax - 8f),
-                new Vector2(bounds.xMin + 8f, bounds.yMin + 62f),
-                new Vector2(bounds.xMin + 34f, bounds.yMin - 24f),
-                new Vector2(bounds.xMin + 112f, bounds.yMin - 20f),
-                new Vector2(bounds.xMin + 162f, bounds.yMin + 54f),
-                new Vector2(bounds.xMin + 152f, bounds.yMax + 38f)
-            },
-            Ponds = new PondPlacement[0],
-            Obstacles = new[]
-            {
-                new PropPlacement("StoneA", "LongStone_02", new Vector2(-80f, 54f), new Vector2(54f, 18f), -8f),
-                new PropPlacement("StoneB", "LongStone_03", new Vector2(94f, 58f), new Vector2(52f, 18f), 12f),
-                new PropPlacement("StoneC", "Stone_10", new Vector2(-18f, -44f), new Vector2(34f, 26f), -12f),
-                new PropPlacement("StoneD", "Stone_07", new Vector2(82f, -52f), new Vector2(34f, 24f), 0f)
-            },
-            Decorations = new[]
-            {
-                new PropPlacement("TreeA", "Tree_06", new Vector2(-98f, 68f), new Vector2(18f, 22f), 0f),
-                new PropPlacement("TreeB", "Tree_07", new Vector2(108f, 70f), new Vector2(20f, 18f), 0f),
-                new PropPlacement("ReedA", "Reed_01", new Vector2(112f, 36f), new Vector2(12f, 15f), 0f)
-            }
-        };
-    }
-
-    private static LevelSpec CreateEndlessSpec(TileBase groundTile)
-    {
-        Rect bounds = new Rect(-150f, -120f, 300f, 240f);
-        return new LevelSpec
-        {
-            Id = LevelId.Endless,
-            Bounds = bounds,
-            GroundTile = groundTile,
-            InitialLeafCount = 130,
-            RiverWidth = 22f,
-            InitialCameraSize = 38f,
-            MinCameraSize = 24f,
-            MaxCameraSize = 72f,
-            Endless = true,
-            EndlessSpawnBatch = 8,
-            EndlessSpawnInterval = 1.8f,
-            EndlessMaxLeaves = 260,
-            RiverPoints = new[]
-            {
-                new Vector2(bounds.xMin - 42f, bounds.yMax - 26f),
-                new Vector2(bounds.xMin + 20f, bounds.yMax - 62f),
-                new Vector2(bounds.xMin + 78f, bounds.yMax - 70f),
-                new Vector2(bounds.xMin + 118f, bounds.yMax - 36f),
-                new Vector2(bounds.xMin + 150f, bounds.yMax - 8f),
-                new Vector2(bounds.xMin + 204f, bounds.yMax - 28f),
-                new Vector2(bounds.xMax + 42f, bounds.yMax - 56f)
-            },
-            Ponds = new[]
-            {
-                new PondPlacement("Pond_01", new Vector2(0f, -4f), new Vector2(58f, 30f))
-            },
-            Obstacles = new PropPlacement[0],
-            Decorations = new[]
-            {
-                new PropPlacement("TreeA", "Tree_08", new Vector2(-122f, 88f), new Vector2(22f, 20f), 0f),
-                new PropPlacement("TreeB", "Tree_09", new Vector2(126f, 82f), new Vector2(24f, 20f), 0f),
-                new PropPlacement("ReedA", "Reed_02", new Vector2(22f, 4f), new Vector2(15f, 18f), 0f),
-                new PropPlacement("ReedB", "Reed_01", new Vector2(-28f, -6f), new Vector2(14f, 17f), 0f)
-            }
-        };
-    }
-
-    private sealed class LevelSpec
-    {
-        public LevelId Id;
-        public Rect Bounds;
-        public TileBase GroundTile;
-        public int InitialLeafCount;
-        public float RiverWidth;
-        public float InitialCameraSize;
-        public float MinCameraSize;
-        public float MaxCameraSize;
-        public float TimeLimitSeconds;
-        public bool Endless;
-        public int EndlessSpawnBatch;
-        public float EndlessSpawnInterval = 1.8f;
-        public int EndlessMaxLeaves = 260;
-        public string RiverArtKey;
-        public Vector2[] RiverPoints = new Vector2[0];
-        public PondPlacement[] Ponds = new PondPlacement[0];
-        public PropPlacement[] Obstacles = new PropPlacement[0];
-        public PropPlacement[] Decorations = new PropPlacement[0];
-    }
-
-    private readonly struct PondPlacement
-    {
-        public readonly string PrefabKey;
-        public readonly Vector2 Position;
-        public readonly Vector2 Size;
-
-        public PondPlacement(string prefabKey, Vector2 position, Vector2 size)
-        {
-            PrefabKey = prefabKey;
-            Position = position;
-            Size = size;
-        }
-    }
-
-    private readonly struct PropPlacement
-    {
-        public readonly string Name;
-        public readonly string PrefabKey;
-        public readonly Vector2 Position;
-        public readonly Vector2 Size;
-        public readonly float Rotation;
-
-        public PropPlacement(string name, string prefabKey, Vector2 position, Vector2 size, float rotation)
-        {
-            Name = name;
-            PrefabKey = prefabKey;
-            Position = position;
-            Size = size;
-            Rotation = rotation;
+            Id = id;
+            InitialLeafCount = initialLeafCount;
+            TimeLimitSeconds = timeLimitSeconds;
+            Endless = endless;
+            EndlessSpawnBatch = endlessSpawnBatch;
+            EndlessSpawnInterval = endlessSpawnInterval;
+            EndlessMaxLeaves = endlessMaxLeaves;
         }
     }
 

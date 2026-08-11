@@ -1,0 +1,242 @@
+{
+  "backgroundcolor": "#a9c978",
+  "class": "FallenLeavesMap",
+  "height": 90,
+  "infinite": false,
+  "layers": [
+    {
+      "draworder": "topdown",
+      "id": 1,
+      "name": "10_Regions",
+      "objects": [
+        {
+          "height": 896,
+          "id": 1,
+          "name": "A_InitialRiverbank",
+          "properties": [
+            { "name": "regionId", "type": "string", "value": "StartRiverbank" },
+            { "name": "difficulty", "type": "int", "value": 1 },
+            { "name": "areaRole", "type": "string", "value": "StartAndTutorial" }
+          ],
+          "rotation": 0,
+          "type": "GameplayRegion",
+          "visible": true,
+          "width": 1152,
+          "x": 0,
+          "y": 1888
+        },
+        {
+          "height": 1152,
+          "id": 2,
+          "name": "B_OpenMeadow",
+          "properties": [
+            { "name": "regionId", "type": "string", "value": "Meadow" },
+            { "name": "difficulty", "type": "int", "value": 2 },
+            { "name": "areaRole", "type": "string", "value": "OpenTraversal" }
+          ],
+          "rotation": 0,
+          "type": "GameplayRegion",
+          "visible": true,
+          "width": 1728,
+          "x": 832,
+          "y": 1376
+        },
+        {
+          "height": 1280,
+          "id": 3,
+          "name": "C_Forest",
+          "properties": [
+            { "name": "regionId", "type": "string", "value": "Forest" },
+            { "name": "difficulty", "type": "int", "value": 3 },
+            { "name": "areaRole", "type": "string", "value": "DenseNavigation" }
+          ],
+          "rotation": 0,
+          "type": "GameplayRegion",
+          "visible": true,
+          "width": 1792,
+          "x": 256,
+          "y": 256
+        },
+        {
+          "height": 2112,
+          "id": 4,
+          "name": "D_OldTreeWetland",
+          "properties": [
+            { "name": "regionId", "type": "string", "value": "OldTreeWetland" },
+            { "name": "difficulty", "type": "int", "value": 4 },
+            { "name": "areaRole", "type": "string", "value": "LandmarkAndLake" }
+          ],
+          "rotation": 0,
+          "type": "GameplayRegion",
+          "visible": true,
+          "width": 1664,
+          "x": 2176,
+          "y": 256
+        }
+      ],
+      "opacity": 0.3,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 2,
+      "name": "20_River",
+      "objects": [
+        {
+          "id": 5,
+          "name": "MainRiver",
+          "polyline": [
+            { "x": 0, "y": 2528 },
+            { "x": 512, "y": 2400 },
+            { "x": 960, "y": 2016 },
+            { "x": 1536, "y": 1632 },
+            { "x": 2080, "y": 1824 },
+            { "x": 2560, "y": 1440 },
+            { "x": 3104, "y": 1056 },
+            { "x": 3520, "y": 640 },
+            { "x": 3840, "y": 448 }
+          ],
+          "properties": [
+            { "name": "widthM", "type": "float", "value": 8.0 },
+            { "name": "isCleanupTarget", "type": "bool", "value": true },
+            { "name": "acceptsLeaves", "type": "bool", "value": true },
+            { "name": "acceptsDebris", "type": "bool", "value": true },
+            { "name": "collectorMarginM", "type": "float", "value": 1.0 }
+          ],
+          "rotation": 0,
+          "type": "RiverPath",
+          "visible": true,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 9,
+      "name": "25_Lakes",
+      "objects": [
+        { "ellipse": true, "height": 352, "id": 47, "name": "SouthWetlandLake", "properties": [{"name":"lakeId","type":"string","value":"SouthWetlandLake"},{"name":"isCleanupTarget","type":"bool","value":true},{"name":"acceptsLeaves","type":"bool","value":true},{"name":"acceptsDebris","type":"bool","value":true},{"name":"collectorMarginM","type":"float","value":1.0}], "rotation": 0, "type": "Lake", "visible": true, "width": 576, "x": 2720, "y": 1984 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 4,
+      "name": "40_Obstacles",
+      "objects": [
+        { "height": 160, "id": 19, "name": "Stone_StartBridge", "properties": [{"name":"prefabKey","type":"string","value":"Stone_03"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 0, "type": "Obstacle", "visible": true, "width": 224, "x": 1008, "y": 2384 },
+        { "height": 128, "id": 20, "name": "LongStone_Meadow", "properties": [{"name":"prefabKey","type":"string","value":"LongStone_02"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 15, "type": "Obstacle", "visible": true, "width": 384, "x": 1472, "y": 2336 },
+        { "height": 160, "id": 21, "name": "Stone_Meadow", "properties": [{"name":"prefabKey","type":"string","value":"Stone_05"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": -10, "type": "Obstacle", "visible": true, "width": 224, "x": 1968, "y": 1744 },
+        { "height": 320, "id": 22, "name": "Tree_Forest_A", "properties": [{"name":"prefabKey","type":"string","value":"Tree_03"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 0, "type": "Obstacle", "visible": true, "width": 256, "x": 672, "y": 704 },
+        { "height": 352, "id": 23, "name": "Tree_Forest_B", "properties": [{"name":"prefabKey","type":"string","value":"Tree_04"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 0, "type": "Obstacle", "visible": true, "width": 224, "x": 1232, "y": 368 },
+        { "height": 160, "id": 24, "name": "LongStone_Forest", "properties": [{"name":"prefabKey","type":"string","value":"LongStone_03"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": -12, "type": "Obstacle", "visible": true, "width": 448, "x": 1376, "y": 1040 },
+        { "height": 192, "id": 25, "name": "Stone_RiverBend", "properties": [{"name":"prefabKey","type":"string","value":"Stone_07"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 5, "type": "Obstacle", "visible": true, "width": 256, "x": 2368, "y": 1280 },
+        { "height": 384, "id": 26, "name": "Tree_Wetland_A", "properties": [{"name":"prefabKey","type":"string","value":"Tree_07"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 0, "type": "Obstacle", "visible": true, "width": 288, "x": 2800, "y": 864 },
+        { "height": 160, "id": 27, "name": "LongStone_Wetland", "properties": [{"name":"prefabKey","type":"string","value":"LongStone_01"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 20, "type": "Obstacle", "visible": true, "width": 448, "x": 3040, "y": 1616 },
+        { "height": 192, "id": 28, "name": "Stone_OldTree", "properties": [{"name":"prefabKey","type":"string","value":"Stone_10"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": -8, "type": "Obstacle", "visible": true, "width": 256, "x": 3392, "y": 576 },
+        { "height": 160, "id": 29, "name": "Stone_FarSouth", "properties": [{"name":"prefabKey","type":"string","value":"Stone_08"},{"name":"blocksLeaf","type":"bool","value":true},{"name":"colliderType","type":"string","value":"Prefab"}], "rotation": 12, "type": "Obstacle", "visible": true, "width": 224, "x": 3344, "y": 2160 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 5,
+      "name": "50_Decorations",
+      "objects": [
+        { "height": 256, "id": 30, "name": "Tree_Start_A", "properties": [{"name":"prefabKey","type":"string","value":"Tree_01"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 192, "x": 224, "y": 1632 },
+        { "height": 192, "id": 31, "name": "Reed_Start", "properties": [{"name":"prefabKey","type":"string","value":"Reed_01"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 128, "x": 512, "y": 2432 },
+        { "height": 288, "id": 32, "name": "Tree_Meadow", "properties": [{"name":"prefabKey","type":"string","value":"Tree_02"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 224, "x": 1712, "y": 1456 },
+        { "height": 352, "id": 33, "name": "Tree_Forest_North", "properties": [{"name":"prefabKey","type":"string","value":"Tree_05"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 256, "x": 288, "y": 240 },
+        { "height": 320, "id": 34, "name": "Tree_Forest_East", "properties": [{"name":"prefabKey","type":"string","value":"Tree_06"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 224, "x": 1648, "y": 160 },
+        { "height": 192, "id": 35, "name": "Reed_RiverBend", "properties": [{"name":"prefabKey","type":"string","value":"Reed_02"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 128, "x": 2368, "y": 1504 },
+        { "height": 352, "id": 36, "name": "Tree_Wetland_North", "properties": [{"name":"prefabKey","type":"string","value":"Tree_08"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 256, "x": 2592, "y": 304 },
+        { "height": 224, "id": 37, "name": "Reed_Wetland", "properties": [{"name":"prefabKey","type":"string","value":"Reed_02"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 160, "x": 2992, "y": 1232 },
+        { "height": 320, "id": 38, "name": "Tree_FarEast", "properties": [{"name":"prefabKey","type":"string","value":"Tree_07"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 224, "x": 3536, "y": 1120 },
+        { "height": 192, "id": 39, "name": "Reed_FarSouth", "properties": [{"name":"prefabKey","type":"string","value":"Reed_01"},{"name":"sortingOffset","type":"int","value":0}], "rotation": 0, "type": "Decoration", "visible": true, "width": 128, "x": 3456, "y": 2304 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 6,
+      "name": "60_Landmarks",
+      "objects": [
+        { "height": 576, "id": 40, "name": "OldTree", "properties": [{"name":"landmarkId","type":"string","value":"OldTree"},{"name":"prefabKey","type":"string","value":"Tree_09"},{"name":"visibleFromStart","type":"bool","value":true}], "rotation": 0, "type": "Landmark", "visible": true, "width": 512, "x": 3200, "y": 64 },
+        { "height": 256, "id": 41, "name": "StartGrove", "properties": [{"name":"landmarkId","type":"string","value":"StartGrove"},{"name":"prefabKey","type":"string","value":"Tree_08"},{"name":"visibleFromStart","type":"bool","value":true}], "rotation": 0, "type": "Landmark", "visible": true, "width": 320, "x": 0, "y": 2528 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 7,
+      "name": "70_GameplayPoints",
+      "objects": [
+        { "id": 42, "name": "CameraStart", "point": true, "properties": [{"name":"pointId","type":"string","value":"CameraStart"}], "rotation": 0, "type": "GameplayPoint", "visible": true, "x": 576, "y": 2336 },
+        { "id": 43, "name": "WindStart", "point": true, "properties": [{"name":"pointId","type":"string","value":"WindStart"}], "rotation": 0, "type": "GameplayPoint", "visible": true, "x": 640, "y": 2304 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 8,
+      "name": "90_Notes",
+      "objects": [
+        { "height": 80, "id": 44, "name": "ScatterNote", "rotation": 0, "text": {"color":"#7a1f1f","fontfamily":"sans-serif","pixelsize":22,"text":"叶子和杂物由程序在全图可行走区域随机散落，不使用固定生成区。","wrap":true}, "type": "", "visible": true, "width": 760, "x": 64, "y": 2688 },
+        { "height": 80, "id": 45, "name": "WaterRuleNote", "rotation": 0, "text": {"color":"#1d4e89","fontfamily":"sans-serif","pixelsize":22,"text":"河流和湖泊都是清理判定水域；叶子或杂物进入有效水面即完成判定。","wrap":true}, "type": "", "visible": true, "width": 900, "x": 1640, "y": 1520 },
+        { "height": 96, "id": 46, "name": "OpenMapNote", "rotation": 0, "text": {"color":"#7a1f1f","fontfamily":"sans-serif","pixelsize":22,"text":"整张地图从开局完整开放；古树只承担远景引导，不设置区域门槛。","wrap":true}, "type": "", "visible": true, "width": 760, "x": 3040, "y": 96 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "nextlayerid": 10,
+  "nextobjectid": 48,
+  "orientation": "orthogonal",
+  "properties": [
+    { "name": "worldUnitsPerTile", "type": "float", "value": 1.0 },
+    { "name": "scatterMode", "type": "string", "value": "RandomWalkableArea" },
+    { "name": "scatterClearanceM", "type": "float", "value": 1.0 },
+    { "name": "scatterAvoidWater", "type": "bool", "value": true },
+    { "name": "scatterAvoidObstacles", "type": "bool", "value": true }
+  ],
+  "renderorder": "right-down",
+  "tiledversion": "1.12.2",
+  "tileheight": 32,
+  "tilesets": [],
+  "tilewidth": 32,
+  "type": "map",
+  "version": "1.10",
+  "width": 120
+}

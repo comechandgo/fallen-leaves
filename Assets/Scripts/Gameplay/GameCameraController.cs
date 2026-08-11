@@ -27,10 +27,20 @@ public class GameCameraController : MonoBehaviour
 
     public void SetBounds(Rect newBounds)
     {
-        SetBounds(newBounds, minSize, maxSize, targetCamera != null ? targetCamera.orthographicSize : minSize);
+        SetBounds(newBounds, newBounds.center, minSize, maxSize, targetCamera != null ? targetCamera.orthographicSize : minSize);
     }
 
     public void SetBounds(Rect newBounds, float newMinSize, float newMaxSize, float initialSize)
+    {
+        SetBounds(newBounds, newBounds.center, newMinSize, newMaxSize, initialSize);
+    }
+
+    public void SetBounds(
+        Rect newBounds,
+        Vector2 initialPosition,
+        float newMinSize,
+        float newMaxSize,
+        float initialSize)
     {
         if (targetCamera == null)
         {
@@ -47,10 +57,10 @@ public class GameCameraController : MonoBehaviour
         minSize = Mathf.Clamp(newMinSize, 1f, maxSize);
         targetSize = Mathf.Clamp(initialSize, minSize, maxSize);
         targetCamera.orthographicSize = targetSize;
-        targetPosition = new Vector3(bounds.center.x, bounds.center.y, -10f);
-        transform.position = targetPosition;
+        targetPosition = new Vector3(initialPosition.x, initialPosition.y, -10f);
         hasBounds = true;
         ClampTarget();
+        transform.position = targetPosition;
     }
 
 
