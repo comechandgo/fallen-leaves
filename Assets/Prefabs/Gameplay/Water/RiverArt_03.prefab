@@ -216,4 +216,4 @@ MonoBehaviour:
   fillTexture: {fileID: 0}
   widthScale: 0.92
   sidePadding: 0.18
-  hideSourceRenderer: 1
+  hideSourceRenderer: 0

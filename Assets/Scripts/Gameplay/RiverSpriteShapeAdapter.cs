@@ -6,13 +6,13 @@ using UnityEngine.U2D;
 public sealed class RiverSpriteShapeAdapter : MonoBehaviour
 {
     private const string FillTextureResourcePath = "RiverSpriteShapeFill";
-    private const int SortingOrderOffset = 1;
+    private const int SortingOrderOffset = -1;
 
     [SerializeField] private RiverImagePiece riverPiece;
     [SerializeField] private Texture2D fillTexture;
     [SerializeField, Range(0.65f, 1.25f)] private float widthScale = 0.92f;
     [SerializeField, Range(0f, 0.5f)] private float sidePadding = 0.18f;
-    [SerializeField] private bool hideSourceRenderer = true;
+    [SerializeField] private bool hideSourceRenderer;
 
     private GameObject shapeObject;
     private SpriteShape spriteShapeProfile;

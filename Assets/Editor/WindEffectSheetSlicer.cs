@@ -8,7 +8,7 @@ public sealed class WindEffectSheetSlicer : AssetPostprocessor
 {
     private const int RowCount = 3;
     private const int ColumnCount = 6;
-    private const string TargetFileName = "WindEffectSheet";
+    private const string TargetFileName = "WindEffectSheet_backup";
     private const string LibraryAssetPath = "Assets/Resources/WindEffectLibrary.asset";
 
     private static readonly string[] RowNames =
@@ -172,6 +172,7 @@ public sealed class WindEffectSheetSlicer : AssetPostprocessor
 
         Sprite[] sprites = LoadSprites(sheetPath);
 
+        library.sourceSheet = AssetDatabase.LoadAssetAtPath<Texture2D>(sheetPath);
         library.downburstFrames = PickFrames(sprites, "Downburst");
         library.surfaceFrames = PickFrames(sprites, "Surface");
         library.tornadoFrames = PickFrames(sprites, "Tornado");

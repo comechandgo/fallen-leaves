@@ -47,6 +47,16 @@ public sealed class WindEffectSpawner : MonoBehaviour
         {
             if (activeForm == form)
             {
+                ApplyTransform(
+                    activeEffect.transform,
+                    frames[0],
+                    form,
+                    center,
+                    direction,
+                    radius,
+                    surfaceLength,
+                    surfaceStartWidth,
+                    surfaceEndWidth);
                 return;
             }
 

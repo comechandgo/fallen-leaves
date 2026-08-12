@@ -1,11 +1,10 @@
 using UnityEngine;
-using UnityEngine.U2D;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(RiverWaterMask), typeof(SpriteRenderer))]
 public sealed class RiverFlowOverlay : MonoBehaviour
 {
-    [SerializeField, Min(1)] private int lineCount = 28;
+    [SerializeField, Min(1)] private int lineCount = 42;
     [SerializeField] private Vector2 flowDirection = new Vector2(1f, 0.28f);
 
     private Transform runtimeRoot;
@@ -27,6 +26,7 @@ public sealed class RiverFlowOverlay : MonoBehaviour
         if (spriteShapeAdapter != null)
         {
             spriteShapeAdapter.BuildRuntimeShape();
+            riverRenderer.enabled = true;
         }
 
         LevelRoot level = GetComponentInParent<LevelRoot>();
@@ -38,7 +38,7 @@ public sealed class RiverFlowOverlay : MonoBehaviour
         generatedSprite = CreateFlowLineSprite();
         Bounds bounds = GetFlowBounds(riverRenderer);
         Rect spawnBounds = new Rect(bounds.min.x, bounds.min.y, bounds.size.x, bounds.size.y);
-        Vector2 direction = flowDirection.sqrMagnitude > 0.001f ? flowDirection.normalized : Vector2.right;
+        Vector2 direction = GetFlowDirection();
 
         for (int i = 0; i < lineCount; i++)
         {
@@ -47,25 +47,34 @@ public sealed class RiverFlowOverlay : MonoBehaviour
 
             SpriteRenderer renderer = line.AddComponent<SpriteRenderer>();
             renderer.sprite = generatedSprite;
-            renderer.color = new Color(0.78f, 0.94f, 1f, Random.Range(0.18f, 0.34f));
-            renderer.sortingLayerName = "Ground";
-            renderer.sortingOrder = 3;
-            ScaleToWorldSize(renderer, new Vector2(Random.Range(16f, 34f), Random.Range(1.4f, 2.4f)));
+            renderer.color = new Color(0.78f, 0.94f, 1f, Random.Range(0.24f, 0.42f));
+            renderer.sortingLayerID = riverRenderer.sortingLayerID;
+            renderer.sortingOrder = riverRenderer.sortingOrder + 2;
+            ScaleToWorldSize(renderer, new Vector2(Random.Range(18f, 38f), Random.Range(1.3f, 2.2f)));
 
             WaterFlowLine flow = line.AddComponent<WaterFlowLine>();
-            flow.Configure(waterMask, spawnBounds, direction, Random.Range(1.4f, 3.1f), Random.Range(4.5f, 9f));
+            flow.Configure(waterMask, spawnBounds, direction, Random.Range(2.2f, 4.2f), Random.Range(4.5f, 8f));
         }
     }
 
     private Bounds GetFlowBounds(SpriteRenderer fallbackRenderer)
     {
-        SpriteShapeRenderer shapeRenderer = GetComponentInChildren<SpriteShapeRenderer>();
-        if (shapeRenderer != null)
+        return fallbackRenderer.bounds;
+    }
+
+    private Vector2 GetFlowDirection()
+    {
+        RiverImagePiece riverPiece = GetComponent<RiverImagePiece>();
+        if (riverPiece != null)
         {
-            return shapeRenderer.bounds;
+            Vector2 direction = riverPiece.WorldExit - riverPiece.WorldEntry;
+            if (direction.sqrMagnitude > 0.001f)
+            {
+                return direction.normalized;
+            }
         }
 
-        return fallbackRenderer.bounds;
+        return flowDirection.sqrMagnitude > 0.001f ? flowDirection.normalized : Vector2.right;
     }
 
     private Sprite CreateFlowLineSprite()
