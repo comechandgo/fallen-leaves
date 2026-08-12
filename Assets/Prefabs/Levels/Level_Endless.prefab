@@ -2896,15 +2896,15 @@ MonoBehaviour:
     width: 120
     height: 90
   cameraStart: {x: -42, y: -28}
-  initialCameraSize: 12
+  initialCameraSize: 10
   minCameraSize: 5
   maxCameraSize: 20
-  initialLeafCount: 130
+  initialLeafCount: 520
   timeLimitSeconds: 0
   endless: 1
   endlessSpawnBatch: 8
   endlessSpawnInterval: 1.8
-  endlessMaxLeaves: 260
+  endlessMaxLeaves: 1040
   groundGenerator: {fileID: 2924600500228580341}
   leafSpawner: {fileID: 1066522327251255091}
   windBlower: {fileID: 3308664342370631908}

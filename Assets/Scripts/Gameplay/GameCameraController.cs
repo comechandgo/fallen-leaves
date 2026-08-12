@@ -6,7 +6,7 @@ public class GameCameraController : MonoBehaviour
 {
     [SerializeField, Min(0.1f)] private float panSpeed = 1f;
     [SerializeField, Min(0.1f)] private float panSmoothing = 14f;
-    [SerializeField, Min(0.1f)] private float zoomSpeed = 12f;
+    [SerializeField, Min(0.1f)] private float zoomSpeed = 1f;
     [SerializeField, Min(0.1f)] private float zoomSmoothing = 12f;
     [SerializeField, Min(1f)] private float minSize = 24f;
     [SerializeField, Min(1f)] private float maxSize = 78f;

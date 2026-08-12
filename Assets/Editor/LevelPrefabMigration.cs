@@ -520,7 +520,7 @@ public static class LevelPrefabMigration
             mode.Id,
             layout.Bounds,
             layout.CameraStart,
-            12f,
+            10f,
             5f,
             20f,
             mode.InitialLeafCount,
@@ -948,10 +948,10 @@ public static class LevelPrefabMigration
     {
         return new[]
         {
-            new ModeSpec(LevelId.SimpleSmall, 160, 0f, false, 0, 1.8f, 260),
-            new ModeSpec(LevelId.ClassicLarge, 260, 0f, false, 0, 1.8f, 260),
-            new ModeSpec(LevelId.TimedChallenge, 120, 180f, false, 0, 1.8f, 260),
-            new ModeSpec(LevelId.Endless, 130, 0f, true, 8, 1.8f, 260)
+            new ModeSpec(LevelId.SimpleSmall, 640, 0f, false, 0, 1.8f, 260),
+            new ModeSpec(LevelId.ClassicLarge, 1040, 0f, false, 0, 1.8f, 260),
+            new ModeSpec(LevelId.TimedChallenge, 480, 180f, false, 0, 1.8f, 260),
+            new ModeSpec(LevelId.Endless, 520, 0f, true, 8, 1.8f, 1040)
         };
     }
 

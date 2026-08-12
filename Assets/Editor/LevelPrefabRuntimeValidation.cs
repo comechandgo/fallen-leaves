@@ -134,10 +134,10 @@ public static class LevelPrefabRuntimeValidation
 
         ValidateLeafPrefab(catalog.GetPrefab(LevelId.SimpleSmall));
 
-        ValidateLevel(catalog, LevelId.SimpleSmall, 160, 0f, false);
-        ValidateLevel(catalog, LevelId.ClassicLarge, 260, 0f, false);
-        ValidateLevel(catalog, LevelId.TimedChallenge, 120, 180f, false);
-        ValidateLevel(catalog, LevelId.Endless, 130, 0f, true);
+        ValidateLevel(catalog, LevelId.SimpleSmall, 640, 0f, false);
+        ValidateLevel(catalog, LevelId.ClassicLarge, 1040, 0f, false);
+        ValidateLevel(catalog, LevelId.TimedChallenge, 480, 180f, false);
+        ValidateLevel(catalog, LevelId.Endless, 520, 0f, true);
 
         LevelLoader.Unload();
         Check(LevelLoader.Current == null, "LevelLoader clears Current immediately on unload");
@@ -188,9 +188,12 @@ public static class LevelPrefabRuntimeValidation
         if (prefab == null) return;
 
         RiverCollector.ResetSession();
+        System.Diagnostics.Stopwatch loadTimer = System.Diagnostics.Stopwatch.StartNew();
         LevelRoot root = LevelLoader.Load(id);
+        loadTimer.Stop();
         Check(root != null, $"{id}: LevelLoader instantiated the prefab");
         if (root == null) return;
+        report.Add($"INFO: {id} loaded {expectedInitialLeaves} leaves in {loadTimer.ElapsedMilliseconds} ms");
 
         unloadedLevels.Add(root);
         Check(root.Id == id, $"{id}: instantiated LevelId matches catalog key");
@@ -359,12 +362,14 @@ public static class LevelPrefabRuntimeValidation
         Check(camera != null && camera.orthographic, $"{id}: orthographic main camera is configured");
         if (camera == null) return;
 
-        Check(Mathf.Approximately(camera.orthographicSize, 12f), $"{id}: camera starts at orthographic size 12");
+        Check(Mathf.Approximately(camera.orthographicSize, 10f), $"{id}: camera starts at orthographic size 10");
 
         GameCameraController controller = camera.GetComponent<GameCameraController>();
         Check(controller != null, $"{id}: camera bounds controller is present");
         if (controller != null)
         {
+            Check(Mathf.Approximately(GetPrivateField<float>(controller, "zoomSpeed"), 1f),
+                $"{id}: each mouse-wheel notch changes the target size by 1");
             Check(Mathf.Approximately(GetPrivateField<float>(controller, "minSize"), 5f),
                 $"{id}: camera minimum orthographic size is 5");
             Check(Mathf.Approximately(GetPrivateField<float>(controller, "maxSize"), 20f),
@@ -494,13 +499,15 @@ public static class LevelPrefabRuntimeValidation
     {
         Check(root.EndlessSpawnBatch == 8, $"{id}: endless batch size is 8");
         Check(Mathf.Approximately(root.EndlessSpawnInterval, 1.8f), $"{id}: endless interval is 1.8 seconds");
-        Check(root.EndlessMaxLeaves == 260, $"{id}: endless maximum is 260 leaves");
+        Check(root.EndlessMaxLeaves == 1040, $"{id}: endless maximum is 1040 leaves");
 
         int before = root.ActiveLeafCount;
         root.Tick(root.EndlessSpawnInterval);
         Check(root.ActiveLeafCount == before + root.EndlessSpawnBatch, $"{id}: one interval spawns one batch");
 
-        for (int i = 0; i < 40; i++)
+        int remainingBatches = Mathf.CeilToInt(
+            (root.EndlessMaxLeaves - root.ActiveLeafCount) / (float)root.EndlessSpawnBatch);
+        for (int i = 0; i < remainingBatches + 2; i++)
         {
             root.Tick(root.EndlessSpawnInterval);
         }
