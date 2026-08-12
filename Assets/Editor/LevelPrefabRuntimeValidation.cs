@@ -170,10 +170,10 @@ public static class LevelPrefabRuntimeValidation
         Check(sprites != null && sprites.arraySize == 4, "Leaf.prefab references four leaf sprites");
         SerializedProperty widthRange = serializedAppearance.FindProperty("widthRange");
         SerializedProperty heightRange = serializedAppearance.FindProperty("heightRange");
-        Check(widthRange != null && Vector2.Distance(widthRange.vector2Value, new Vector2(0.33f, 0.46f)) < 0.0001f,
-            "Leaf.prefab width range is scaled to one twentieth");
-        Check(heightRange != null && Vector2.Distance(heightRange.vector2Value, new Vector2(0.28f, 0.42f)) < 0.0001f,
-            "Leaf.prefab height range is scaled to one twentieth");
+        Check(widthRange != null && Vector2.Distance(widthRange.vector2Value, new Vector2(0.66f, 0.92f)) < 0.0001f,
+            "Leaf.prefab width range is scaled to one tenth");
+        Check(heightRange != null && Vector2.Distance(heightRange.vector2Value, new Vector2(0.56f, 0.84f)) < 0.0001f,
+            "Leaf.prefab height range is scaled to one tenth");
     }
 
     private static void ValidateLevel(
@@ -328,8 +328,16 @@ public static class LevelPrefabRuntimeValidation
         }
 
         Transform oldTree = root.transform.Find("Landmarks/OldTree");
-        Check(oldTree != null && Vector2.Distance(oldTree.position, new Vector2(48f, 34f)) < 0.01f,
-            $"{id}: OldTree landmark is centered at (48, 34)");
+        if (id == LevelId.ClassicLarge)
+        {
+            Check(oldTree != null && root.MapBounds.Contains(oldTree.position),
+                $"{id}: manually adjusted OldTree landmark remains inside the map");
+        }
+        else
+        {
+            Check(oldTree != null && Vector2.Distance(oldTree.position, new Vector2(48f, 34f)) < 0.01f,
+                $"{id}: OldTree landmark is centered at (48, 34)");
+        }
 
         RiverCollector[] collectors = root.GetComponentsInChildren<RiverCollector>(true);
         bool layersCorrect = true;
@@ -351,6 +359,18 @@ public static class LevelPrefabRuntimeValidation
         Check(camera != null && camera.orthographic, $"{id}: orthographic main camera is configured");
         if (camera == null) return;
 
+        Check(Mathf.Approximately(camera.orthographicSize, 12f), $"{id}: camera starts at orthographic size 12");
+
+        GameCameraController controller = camera.GetComponent<GameCameraController>();
+        Check(controller != null, $"{id}: camera bounds controller is present");
+        if (controller != null)
+        {
+            Check(Mathf.Approximately(GetPrivateField<float>(controller, "minSize"), 5f),
+                $"{id}: camera minimum orthographic size is 5");
+            Check(Mathf.Approximately(GetPrivateField<float>(controller, "maxSize"), 20f),
+                $"{id}: camera maximum orthographic size is 20");
+        }
+
         float halfHeight = camera.orthographicSize;
         float halfWidth = halfHeight * camera.aspect;
         Vector2 expected = new Vector2(
@@ -358,7 +378,10 @@ public static class LevelPrefabRuntimeValidation
             Mathf.Clamp(root.CameraStart.y, root.MapBounds.yMin + halfHeight, root.MapBounds.yMax - halfHeight));
         Vector2 cameraCenter = camera.transform.position;
         Check(Vector2.Distance(cameraCenter, expected) < 0.05f, $"{id}: camera starts at the clamped TMJ CameraStart");
-        Check(camera.GetComponent<GameCameraController>() != null, $"{id}: camera bounds controller is present");
+        const float landscapeAspect = 16f / 9f;
+        Check(20f * 2f * landscapeAspect < root.MapBounds.width
+            && 20f * 2f < root.MapBounds.height,
+            $"{id}: 16:9 maximum zoom cannot reveal the full 120x90 map");
     }
 
     private static void ValidateSpawnedLeaves(LevelRoot root, LevelId id, int expectedCount)
@@ -397,7 +420,7 @@ public static class LevelPrefabRuntimeValidation
                 Vector2 spriteSize = renderer.sprite.bounds.size;
                 float width = spriteSize.x * Mathf.Abs(scale.x);
                 float height = spriteSize.y * Mathf.Abs(scale.y);
-                if (width < 0.329f || width > 0.461f || height < 0.279f || height > 0.421f)
+                if (width < 0.659f || width > 0.921f || height < 0.559f || height > 0.841f)
                 {
                     sizesCorrect = false;
                 }
@@ -414,7 +437,7 @@ public static class LevelPrefabRuntimeValidation
         }
 
         Check(componentsCorrect, $"{id}: every spawned leaf preserves the prefab component set and Leaf layer");
-        Check(sizesCorrect, $"{id}: every spawned leaf uses the one-twentieth world-size range");
+        Check(sizesCorrect, $"{id}: every spawned leaf uses the one-tenth world-size range");
         Check(outsideCount == 0, $"{id}: all sampled leaves keep one metre from map boundaries");
         Check(blockedCount == 0, $"{id}: sampled leaves keep one metre from obstacles and water");
 

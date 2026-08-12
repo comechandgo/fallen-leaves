@@ -2896,9 +2896,9 @@ MonoBehaviour:
     width: 120
     height: 90
   cameraStart: {x: -42, y: -28}
-  initialCameraSize: 16
-  minCameraSize: 10
-  maxCameraSize: 33
+  initialCameraSize: 12
+  minCameraSize: 5
+  maxCameraSize: 20
   initialLeafCount: 130
   timeLimitSeconds: 0
   endless: 1
