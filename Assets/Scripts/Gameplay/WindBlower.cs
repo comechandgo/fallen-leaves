@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 public class WindBlower : MonoBehaviour
 {
     [Header("判定")]
-    [SerializeField, Min(0.1f)] private float radius = 10f;
+    [SerializeField, Min(0.1f)] private float radius = 1f;
     [SerializeField, Range(0.1f, 1f)] private float innerRatio = 0.2f;
     [SerializeField, Range(0.1f, 1f)] private float middleRatio = 0.5f;
 

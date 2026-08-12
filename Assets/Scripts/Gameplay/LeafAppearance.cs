@@ -5,8 +5,8 @@ using UnityEngine;
 public sealed class LeafAppearance : MonoBehaviour
 {
     [SerializeField] private Sprite[] sprites = new Sprite[0];
-    [SerializeField] private Vector2 widthRange = new Vector2(6.6f, 9.2f);
-    [SerializeField] private Vector2 heightRange = new Vector2(5.6f, 8.4f);
+    [SerializeField] private Vector2 widthRange = new Vector2(0.33f, 0.46f);
+    [SerializeField] private Vector2 heightRange = new Vector2(0.28f, 0.42f);
     [SerializeField] private Vector2 weightRange = new Vector2(0.45f, 1.05f);
 
     public void Configure(Sprite[] leafSprites, Vector2 widths, Vector2 heights, Vector2 weights)
