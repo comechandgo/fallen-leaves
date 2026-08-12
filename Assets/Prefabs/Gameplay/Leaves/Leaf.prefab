@@ -203,8 +203,8 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5f92cefa4c2c0c146a55ec39d46cf99d, type: 3}
   - {fileID: 21300000, guid: 95323034d784c3c419a8565c25268761, type: 3}
   - {fileID: 21300000, guid: 0cc0ec80e2451e84792ec6af247cf72e, type: 3}
-  widthRange: {x: 0.66, y: 0.92}
-  heightRange: {x: 0.56, y: 0.84}
+  widthRange: {x: 0.99, y: 1.38}
+  heightRange: {x: 0.84, y: 1.26}
   weightRange: {x: 0.45, y: 1.05}
 --- !u!114 &7818041674699790111
 MonoBehaviour:

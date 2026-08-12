@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43bac373e0ecefd4cb13b7bd23c68e7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  radius: 1
+  radius: 2
   innerRatio: 0.2
   middleRatio: 0.5
   windableLayer:

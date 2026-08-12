@@ -18,7 +18,7 @@ public static class UpgradeCatalog
 
     private static readonly float[] LeafValues = { 1f, 1.5f, 2f, 2.5f, 3f };
     private static readonly float[] BaseWinds = { 1f, 2f, 3f, 4f, 5f };
-    private static readonly float[] WindRadii = { 1f, 1.5f, 2f, 2.5f, 3f };
+    private static readonly float[] WindRadii = { 2f, 3f, 4f, 5f, 6f };
     private static readonly float[] MaxTargets = { 10f, 20f, 30f };
 
     // 策划案未给价格表，先集中放这里方便调数。

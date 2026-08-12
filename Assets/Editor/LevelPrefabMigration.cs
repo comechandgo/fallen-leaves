@@ -356,8 +356,8 @@ public static class LevelPrefabMigration
         root.AddComponent<YSort>().Configure("Actor", 1000, 3f, true);
         root.AddComponent<LeafAppearance>().Configure(
             sprites,
-            new Vector2(0.66f, 0.92f),
-            new Vector2(0.56f, 0.84f),
+            new Vector2(0.99f, 1.38f),
+            new Vector2(0.84f, 1.26f),
             new Vector2(0.45f, 1.05f));
         root.AddComponent<LeafLifecycle>();
         return SaveBasePrefab(root, $"{PrefabRoot}/Leaves/Leaf.prefab");
