@@ -432,6 +432,7 @@ public static class LevelPrefabMigration
         mask.Configure(renderer, renderer.sprite.texture);
         RiverImagePiece piece = root.AddComponent<RiverImagePiece>();
         piece.Configure(renderer, mask);
+        root.AddComponent<RiverSpriteShapeAdapter>();
         root.AddComponent<RiverFlowOverlay>();
         root.AddComponent<RiverCollector>().SetWaterMask(mask, 1f);
         return SaveBasePrefab(root, $"{PrefabRoot}/Water/{name}.prefab");

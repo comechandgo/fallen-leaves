@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9a25b06516935944adca531384a71ad, type: 3}
+  m_Name: WindEffectLibrary
+  m_EditorClassIdentifier: 
+  downburstFrames:
+  - {fileID: -6026340493180919192, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: 6954054296135025891, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -2407030913722190986, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -1193785194397051740, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -6924191405505222470, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: 2884546649569964399, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  surfaceFrames:
+  - {fileID: -1639456829282075893, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -4265285820077294430, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -2058484341915603821, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: 7120244196619669140, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: 6833366952834621580, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: 5863931410781904920, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  tornadoFrames:
+  - {fileID: -6990627737230491511, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -2843922398191167764, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -1642816158271126046, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: 8413938091589049237, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: 4211702459686844306, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  - {fileID: -8593372433654500650, guid: e8f3ce445243fdd478a73d7a1030c2b3, type: 3}
+  downburstFps: 12
+  surfaceFps: 12
+  tornadoFps: 12

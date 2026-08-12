@@ -1,47 +1,145 @@
+using UnityEngine;
+
 public enum UpgradeKind
 {
-    LeafValue,
-    BaseWind,
-    WindRadius,
-    MaxTargets
+    WindPower,
+    WindArea,
+    WindPulse
 }
 
 public static class UpgradeCatalog
 {
     public static readonly UpgradeKind[] All =
     {
-        UpgradeKind.LeafValue,
-        UpgradeKind.BaseWind,
-        UpgradeKind.WindRadius,
-        UpgradeKind.MaxTargets
+        UpgradeKind.WindPower,
+        UpgradeKind.WindArea,
+        UpgradeKind.WindPulse
     };
 
-    private static readonly float[] LeafValues = { 1f, 1.5f, 2f, 2.5f, 3f };
-    private static readonly float[] BaseWinds = { 1f, 2f, 3f, 4f, 5f };
-    private static readonly float[] WindRadii = { 2f, 3f, 4f, 5f, 6f };
-    private static readonly float[] MaxTargets = { 10f, 20f, 30f };
+    private static readonly float[][] PowerLevels =
+    {
+        new[] { 1f, 1.3f, 1.8f },
+        new[] { 2.2f, 3f, 4.2f },
+        new[] { 5f, 7f, 10f }
+    };
 
-    // 策划案未给价格表，先集中放这里方便调数。
-    private static readonly int[] LeafValueCosts = { 6, 10, 14, 18 };
-    private static readonly int[] BaseWindCosts = { 8, 14, 20, 28 };
-    private static readonly int[] WindRadiusCosts = { 8, 14, 22, 30 };
-    private static readonly int[] MaxTargetCosts = { 10, 18 };
+    private static readonly float[][] RadiusLevels =
+    {
+        new[] { 6f, 7.5f, 9f },
+        new[] { 0f, 0f, 0f },
+        new[] { 12f, 15f, 19f }
+    };
+
+    private static readonly float[] SurfaceLengthLevels = { 18f, 21f, 25f };
+    private static readonly float[] SurfaceStartWidthLevels = { 6f, 8f, 10f };
+    private static readonly float[] SurfaceEndWidthLevels = { 10f, 13f, 16f };
+
+    private static readonly int[][] MaxTargetLevels =
+    {
+        new[] { 10, 15, 22 },
+        new[] { 24, 36, 52 },
+        new[] { 100, 150, 220 }
+    };
+
+    private static readonly float[][] IntervalLevels =
+    {
+        new[] { 0.50f, 0.45f, 0.40f },
+        new[] { 0.40f, 0.34f, 0.28f },
+        new[] { 0.18f, 0.15f, 0.12f }
+    };
+
+    private static readonly int[][] CostsByForm =
+    {
+        new[] { 10, 35 },
+        new[] { 150, 550 },
+        new[] { 1500, 6000 }
+    };
+
+    private static readonly string[][][] StepNames =
+    {
+        new[]
+        {
+            new[] { "凝压", "落地爆发" },
+            new[] { "扩散", "外圈补压" },
+            new[] { "通脉", "复吹" }
+        },
+        new[]
+        {
+            new[] { "风压", "贯流" },
+            new[] { "展幅", "满幅" },
+            new[] { "连流", "不息面风" }
+        },
+        new[]
+        {
+            new[] { "强吸", "撕扯" },
+            new[] { "扩环", "天幕" },
+            new[] { "载流", "不息涡流" }
+        }
+    };
+
+    private static readonly string[] ScaleWords = { "迷你", "巨型", "超级" };
+    private static readonly string[] PowerWords = { "弱小", "强悍", "无敌" };
+    private static readonly string[] PulseWords = { "清风", "狂风", "雷霆" };
+
+    private const float SurfaceLiftRatio = 0.32f;
+    private const float TornadoInwardRatio = 0.55f;
+    private const float TornadoSpinRatio = 1.00f;
+
+    // 风势阈值按目标解锁时间配置：面风约 1:00，龙卷风约 3:35。
+    private static readonly float[] WindMomentumTargets = { 0f, 720f, 10500f };
+    private static readonly float[] FallbackUnlockSeconds = { 0f, 70f, 225f };
 
     public static string GetName(UpgradeKind kind)
     {
         switch (kind)
         {
-            case UpgradeKind.LeafValue: return "单叶价值";
-            case UpgradeKind.BaseWind: return "基础风力";
-            case UpgradeKind.WindRadius: return "风力范围";
-            case UpgradeKind.MaxTargets: return "单次数量";
-            default: return "强化";
+            case UpgradeKind.WindPower: return "风力";
+            case UpgradeKind.WindArea: return "风域";
+            case UpgradeKind.WindPulse: return "风脉";
+            default: return "升级";
         }
+    }
+
+    public static string GetFormName(WindForm form)
+    {
+        switch (form)
+        {
+            case WindForm.Downburst: return "下沉风";
+            case WindForm.Surface: return "面风";
+            case WindForm.Tornado: return "龙卷风";
+            default: return "风";
+        }
+    }
+
+    public static bool TryGetNextForm(WindForm current, out WindForm next)
+    {
+        switch (current)
+        {
+            case WindForm.Downburst:
+                next = WindForm.Surface;
+                return true;
+            case WindForm.Surface:
+                next = WindForm.Tornado;
+                return true;
+            default:
+                next = current;
+                return false;
+        }
+    }
+
+    public static float GetWindMomentumTarget(WindForm targetForm)
+    {
+        return WindMomentumTargets[(int)targetForm];
+    }
+
+    public static float GetFallbackUnlockSeconds(WindForm targetForm)
+    {
+        return FallbackUnlockSeconds[(int)targetForm];
     }
 
     public static int GetMaxLevel(UpgradeKind kind)
     {
-        return GetValues(kind).Length;
+        return 3;
     }
 
     public static bool IsMaxLevel(UpgradeKind kind, int levelIndex)
@@ -51,41 +149,97 @@ public static class UpgradeCatalog
 
     public static int ClampLevel(UpgradeKind kind, int levelIndex)
     {
-        int maxIndex = GetMaxLevel(kind) - 1;
         if (levelIndex < 0) return 0;
-        return levelIndex > maxIndex ? maxIndex : levelIndex;
+        return levelIndex > 2 ? 2 : levelIndex;
     }
 
-    public static float GetValue(UpgradeKind kind, int levelIndex)
+    public static int GetLevel(int[] levels, UpgradeKind kind)
     {
-        float[] values = GetValues(kind);
-        return values[ClampLevel(kind, levelIndex)];
+        int index = (int)kind;
+        if (levels == null || index < 0 || index >= levels.Length) return 0;
+        return ClampLevel(kind, levels[index]);
     }
 
-    public static int GetNextCost(UpgradeKind kind, int levelIndex)
+    public static int GetNextCost(WindForm form, UpgradeKind kind, int levelIndex)
     {
         if (IsMaxLevel(kind, levelIndex)) return 0;
-        int[] costs = GetCosts(kind);
-        return costs[ClampLevel(kind, levelIndex)];
+        return CostsByForm[(int)form][ClampLevel(kind, levelIndex)];
     }
 
-    public static string GetValueText(UpgradeKind kind, int levelIndex)
+    public static string GetNextStepName(WindForm form, UpgradeKind kind, int levelIndex)
     {
-        float value = GetValue(kind, levelIndex);
+        if (IsMaxLevel(kind, levelIndex)) return "满级";
+        return StepNames[(int)form][(int)kind][ClampLevel(kind, levelIndex)];
+    }
+
+    public static string GetValueText(WindForm form, UpgradeKind kind, int levelIndex)
+    {
+        int formIndex = (int)form;
+        int level = ClampLevel(kind, levelIndex);
+
         switch (kind)
         {
-            case UpgradeKind.LeafValue: return FormatNumber(value);
-            case UpgradeKind.BaseWind: return FormatNumber(value);
-            case UpgradeKind.WindRadius: return FormatNumber(value) + "m";
-            case UpgradeKind.MaxTargets: return ((int)value).ToString();
-            default: return FormatNumber(value);
+            case UpgradeKind.WindPower:
+                return "风力" + FormatNumber(PowerLevels[formIndex][level]);
+
+            case UpgradeKind.WindArea:
+                if (form == WindForm.Surface)
+                {
+                    return "长" + FormatNumber(SurfaceLengthLevels[level]) + "m，宽"
+                        + FormatNumber(SurfaceStartWidthLevels[level]) + "～"
+                        + FormatNumber(SurfaceEndWidthLevels[level]) + "m";
+                }
+
+                return "半径" + FormatNumber(RadiusLevels[formIndex][level]) + "m";
+
+            case UpgradeKind.WindPulse:
+                return "风载" + MaxTargetLevels[formIndex][level]
+                    + "，间隔" + IntervalLevels[formIndex][level].ToString("0.00") + "秒";
+
+            default:
+                return "";
         }
     }
 
-    public static string GetNextValueText(UpgradeKind kind, int levelIndex)
+    public static string GetNextValueText(WindForm form, UpgradeKind kind, int levelIndex)
     {
         if (IsMaxLevel(kind, levelIndex)) return "MAX";
-        return GetValueText(kind, levelIndex + 1);
+        return GetValueText(form, kind, levelIndex + 1);
+    }
+
+    public static WindRuntimeValues GetRuntimeValues(WindForm form, int[] levels, UpgradeKind? inheritance)
+    {
+        int formIndex = (int)form;
+        int powerLevel = GetLevel(levels, UpgradeKind.WindPower);
+        int areaLevel = GetLevel(levels, UpgradeKind.WindArea);
+        int pulseLevel = GetLevel(levels, UpgradeKind.WindPulse);
+
+        WindRuntimeValues values = new WindRuntimeValues
+        {
+            Shape = GetShape(form),
+            Power = PowerLevels[formIndex][powerLevel],
+            Radius = form == WindForm.Surface ? 0f : RadiusLevels[formIndex][areaLevel],
+            Length = form == WindForm.Surface ? SurfaceLengthLevels[areaLevel] : 0f,
+            StartWidth = form == WindForm.Surface ? SurfaceStartWidthLevels[areaLevel] : 0f,
+            EndWidth = form == WindForm.Surface ? SurfaceEndWidthLevels[areaLevel] : 0f,
+            MaxTargets = MaxTargetLevels[formIndex][pulseLevel],
+            Interval = IntervalLevels[formIndex][pulseLevel],
+            SurfaceLift = form == WindForm.Surface ? SurfaceLiftRatio : 0f,
+            TornadoInwardRatio = form == WindForm.Tornado ? TornadoInwardRatio : 0f,
+            TornadoSpinRatio = form == WindForm.Tornado ? TornadoSpinRatio : 0f
+        };
+
+        ApplyInheritance(ref values, inheritance);
+        return values;
+    }
+
+    public static string GetWindName(WindForm form, int[] levels)
+    {
+        int area = GetLevel(levels, UpgradeKind.WindArea);
+        int power = GetLevel(levels, UpgradeKind.WindPower);
+        int pulse = GetLevel(levels, UpgradeKind.WindPulse);
+
+        return ScaleWords[area] + PowerWords[power] + PulseWords[pulse] + GetFormName(form);
     }
 
     public static string FormatNumber(float value)
@@ -93,27 +247,43 @@ public static class UpgradeCatalog
         return value % 1f == 0f ? ((int)value).ToString() : value.ToString("0.0");
     }
 
-    private static float[] GetValues(UpgradeKind kind)
+    private static WindShape GetShape(WindForm form)
     {
-        switch (kind)
+        switch (form)
         {
-            case UpgradeKind.LeafValue: return LeafValues;
-            case UpgradeKind.BaseWind: return BaseWinds;
-            case UpgradeKind.WindRadius: return WindRadii;
-            case UpgradeKind.MaxTargets: return MaxTargets;
-            default: return BaseWinds;
+            case WindForm.Downburst: return WindShape.Downburst;
+            case WindForm.Surface: return WindShape.Surface;
+            case WindForm.Tornado: return WindShape.Tornado;
+            default: return WindShape.Downburst;
         }
     }
 
-    private static int[] GetCosts(UpgradeKind kind)
+    private static void ApplyInheritance(ref WindRuntimeValues values, UpgradeKind? inheritance)
     {
-        switch (kind)
+        if (!inheritance.HasValue) return;
+
+        switch (inheritance.Value)
         {
-            case UpgradeKind.LeafValue: return LeafValueCosts;
-            case UpgradeKind.BaseWind: return BaseWindCosts;
-            case UpgradeKind.WindRadius: return WindRadiusCosts;
-            case UpgradeKind.MaxTargets: return MaxTargetCosts;
-            default: return BaseWindCosts;
+            case UpgradeKind.WindPower:
+                values.Power *= 1.15f;
+                break;
+
+            case UpgradeKind.WindArea:
+                if (values.Shape == WindShape.Surface)
+                {
+                    values.Length *= 1.12f;
+                    values.StartWidth *= 1.12f;
+                    values.EndWidth *= 1.12f;
+                }
+                else
+                {
+                    values.Radius *= 1.12f;
+                }
+                break;
+
+            case UpgradeKind.WindPulse:
+                values.MaxTargets = Mathf.RoundToInt(values.MaxTargets * 1.2f);
+                break;
         }
     }
 }

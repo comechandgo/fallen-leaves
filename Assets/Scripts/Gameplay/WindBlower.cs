@@ -3,6 +3,15 @@ using UnityEngine.EventSystems;
 
 public class WindBlower : MonoBehaviour
 {
+    public event System.Action<WindBlowResult> OnTargetsPushed;
+
+    [Header("形态")]
+    [SerializeField] private WindShape windShape = WindShape.Downburst;
+    [SerializeField, Min(0.1f)] private float surfaceLength = 18f;
+    [SerializeField, Min(0.1f)] private float surfaceStartWidth = 6f;
+    [SerializeField, Min(0.1f)] private float surfaceEndWidth = 10f;
+    [SerializeField, Min(0.01f)] private float minDragDistance = 0.05f;
+
     [Header("判定")]
     [SerializeField, Min(0.1f)] private float radius = 2f;
     [SerializeField, Range(0.1f, 1f)] private float innerRatio = 0.2f;
@@ -17,9 +26,13 @@ public class WindBlower : MonoBehaviour
     [Header("风力")]
     [SerializeField, Min(0f)] private float baseWind = 1f;
     [SerializeField, Min(0.1f)] private float speedScale = 6f;
+    [SerializeField, Range(0f, 0.75f)] private float surfaceLiftRatio = 0.32f;
+    [SerializeField, Range(0f, 1f)] private float tornadoInwardRatio = 0.55f;
+    [SerializeField, Range(0.1f, 1.5f)] private float tornadoSpinRatio = 1f;
 
     [Header("显示")]
     [SerializeField] private bool showWindRings = true;
+    [SerializeField, Min(0.01f)] private float windEffectInterval = 0.16f;
 
     private const int RingSegmentCount = 96;
 
@@ -30,23 +43,54 @@ public class WindBlower : MonoBehaviour
     private float nextBlowTime;
     private Vector2 lastCenter;
     private bool hasLastCenter;
+    private Vector2 lastPointerWorld;
+    private bool hasLastPointerWorld;
 
     private LineRenderer innerRing;
     private LineRenderer middleRing;
     private LineRenderer outerRing;
     private float ringHideTime;
 
+    private WindEffectSpawner windEffectSpawner;
+    private float nextWindEffectTime;
+
     public float Radius => radius;
     public float BaseWind => baseWind;
     public int MaxTargetsPerBlow => maxTargetsPerBlow;
+    public float BlowInterval => blowInterval;
 
     public void ConfigureLayer(int layerMask)
     {
         windableLayer = layerMask;
     }
 
+    public void ApplyUpgradeValues(WindRuntimeValues values)
+    {
+        bool shapeChanged = windShape != values.Shape;
+        windShape = values.Shape;
+        baseWind = Mathf.Max(0f, values.Power);
+        radius = Mathf.Max(0.1f, values.Radius);
+        surfaceLength = Mathf.Max(0.1f, values.Length);
+        surfaceStartWidth = Mathf.Max(0.1f, values.StartWidth);
+        surfaceEndWidth = Mathf.Max(0.1f, values.EndWidth);
+        maxTargetsPerBlow = Mathf.Max(1, values.MaxTargets);
+        blowInterval = Mathf.Max(0.01f, values.Interval);
+        perLeafCooldown = Mathf.Max(0.01f, values.Interval);
+        surfaceLiftRatio = Mathf.Clamp(values.SurfaceLift, 0f, 0.75f);
+        tornadoInwardRatio = Mathf.Clamp01(values.TornadoInwardRatio);
+        tornadoSpinRatio = Mathf.Clamp(values.TornadoSpinRatio, 0.1f, 1.5f);
+
+        if (shapeChanged)
+        {
+            hasLastPointerWorld = false;
+            SetRingsVisible(false);
+            windEffectSpawner?.StopActiveEffect();
+        }
+    }
+
     public void ApplyUpgradeValues(float windValue, float windRadius, int maxTargets)
     {
+        windShape = WindShape.Downburst;
         baseWind = Mathf.Max(0f, windValue);
         radius = Mathf.Max(0.1f, windRadius);
         maxTargetsPerBlow = Mathf.Max(1, maxTargets);
@@ -60,6 +104,17 @@ public class WindBlower : MonoBehaviour
         windableFilter = new ContactFilter2D();
 
         CreateWindRings();
+        CacheWindEffectSpawner();
+    }
+
+    private void CacheWindEffectSpawner()
+    {
+        windEffectSpawner = GetComponent<WindEffectSpawner>();
+
+        if (windEffectSpawner == null)
+        {
+            windEffectSpawner = gameObject.AddComponent<WindEffectSpawner>();
+        }
     }
 
     private void Update()
@@ -71,14 +126,57 @@ public class WindBlower : MonoBehaviour
             return;
         }
 
-        if (TryGetWindCenter(out Vector2 center))
+        if (TryGetWindInput(out Vector2 center, out Vector2 direction))
         {
-            Blow(center);
+            int pushed = Blow(center, direction);
+            if (pushed > 0)
+            {
+                OnTargetsPushed?.Invoke(new WindBlowResult(pushed, baseWind, windShape, blowInterval));
+            }
+
             nextBlowTime = Time.time + blowInterval;
         }
     }
 
-    private bool TryGetWindCenter(out Vector2 center)
+    private bool TryGetWindInput(out Vector2 center, out Vector2 direction)
+    {
+        if (!TryGetPointerWorld(out center))
+        {
+            hasLastPointerWorld = false;
+            direction = Vector2.zero;
+            return false;
+        }
+
+        if (windShape != WindShape.Surface)
+        {
+            hasLastPointerWorld = true;
+            lastPointerWorld = center;
+            direction = Vector2.zero;
+            return true;
+        }
+
+        if (!hasLastPointerWorld)
+        {
+            hasLastPointerWorld = true;
+            lastPointerWorld = center;
+            direction = Vector2.zero;
+            return false;
+        }
+
+        Vector2 delta = center - lastPointerWorld;
+        lastPointerWorld = center;
+
+        if (delta.sqrMagnitude < minDragDistance * minDragDistance)
+        {
+            direction = Vector2.zero;
+            return false;
+        }
+
+        direction = delta.normalized;
+        return true;
+    }
+
+    private bool TryGetPointerWorld(out Vector2 world)
     {
         if (mainCamera == null)
         {
@@ -87,7 +185,7 @@ public class WindBlower : MonoBehaviour
 
         if (mainCamera == null)
         {
-            center = default;
+            world = default;
             return false;
         }
 
@@ -95,11 +193,11 @@ public class WindBlower : MonoBehaviour
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             {
-                center = default;
+                world = default;
                 return false;
             }
 
-            center = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            world = mainCamera.ScreenToWorldPoint(Input.mousePosition);
             return true;
         }
 
@@ -110,31 +208,32 @@ public class WindBlower : MonoBehaviour
             {
                 if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(touch.fingerId))
                 {
-                    center = default;
+                    world = default;
                     return false;
                 }
 
-                center = mainCamera.ScreenToWorldPoint(touch.position);
+                world = mainCamera.ScreenToWorldPoint(touch.position);
                 return true;
             }
         }
 
-
-        center = default;
+        world = default;
         return false;
     }
 
-    private void Blow(Vector2 center)
+    private int Blow(Vector2 center, Vector2 windDirection)
     {
         int layerMask = windableLayer.value == 0 ? ~0 : windableLayer.value;
         windableFilter.SetLayerMask(layerMask);
 
-        int count = Physics2D.OverlapCircle(center, radius, windableFilter, hits);
+        float queryRadius = GetQueryRadius();
+        int count = Physics2D.OverlapCircle(center, queryRadius, windableFilter, hits);
 
         lastCenter = center;
         hasLastCenter = true;
 
-        ShowWindRings(center);
+        ShowWindShape(center);
+        TryPlayWindEffect(center, windDirection);
 
         candidates.Clear();
         for (int i = 0; i < count; i++)
@@ -145,14 +244,10 @@ public class WindBlower : MonoBehaviour
                 continue;
             }
 
-            Vector2 direction = windable.Position - center;
-            float distance = direction.magnitude;
-            if (distance > radius)
+            if (TryCreateCandidate(windable, center, windDirection, out WindCandidate candidate))
             {
-                continue;
+                candidates.Add(candidate);
             }
-
-            candidates.Add(new WindCandidate(windable, direction, distance, GetRingSpeed(distance)));
         }
 
         candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
@@ -164,14 +259,176 @@ public class WindBlower : MonoBehaviour
             if (candidate.Windable.TryPushByWind(candidate.Direction, candidate.RingSpeed, perLeafCooldown))
             {
                 pushed++;
-                if (pushed >= maxTargetsPerBlow) return;
+                if (pushed >= maxTargetsPerBlow) return pushed;
             }
+        }
+
+        return pushed;
+    }
+
+    private void TryPlayWindEffect(Vector2 center, Vector2 windDirection)
+    {
+        if (Time.time < nextWindEffectTime)
+        {
+            return;
+        }
+
+        if (windEffectSpawner == null)
+        {
+            CacheWindEffectSpawner();
+        }
+
+        if (windEffectSpawner == null)
+        {
+            return;
+        }
+
+        windEffectSpawner.Play(
+            windShape,
+            center,
+            GetEffectDirection(windDirection),
+            radius,
+            surfaceLength,
+            surfaceStartWidth,
+            surfaceEndWidth);
+
+        nextWindEffectTime = Time.time + windEffectInterval;
+    }
+
+    private Vector2 GetEffectDirection(Vector2 windDirection)
+    {
+        if (windShape == WindShape.Surface && windDirection.sqrMagnitude > 0.0001f)
+        {
+            return windDirection.normalized;
+        }
+
+        return Vector2.up;
+    }
+
+    private bool TryCreateCandidate(
+        Windable windable,
+        Vector2 center,
+        Vector2 windDirection,
+        out WindCandidate candidate)
+    {
+        Vector2 offset = windable.Position - center;
+
+        switch (windShape)
+        {
+            case WindShape.Surface:
+                return TryCreateSurfaceCandidate(windable, offset, windDirection, out candidate);
+
+            case WindShape.Tornado:
+                return TryCreateTornadoCandidate(windable, offset, out candidate);
+
+            default:
+                return TryCreateDownburstCandidate(windable, offset, out candidate);
         }
     }
 
-    private float GetRingSpeed(float distance)
+    private bool TryCreateDownburstCandidate(
+        Windable windable,
+        Vector2 offset,
+        out WindCandidate candidate)
     {
-        float rate = distance / radius;
+        float distance = offset.magnitude;
+        if (distance <= 0.0001f || distance > radius)
+        {
+            candidate = default;
+            return false;
+        }
+
+        candidate = new WindCandidate(windable, offset, distance, GetRingSpeed(distance, radius));
+        return true;
+    }
+
+    private bool TryCreateSurfaceCandidate(
+        Windable windable,
+        Vector2 offset,
+        Vector2 windDirection,
+        out WindCandidate candidate)
+    {
+        if (windDirection.sqrMagnitude <= 0.0001f)
+        {
+            candidate = default;
+            return false;
+        }
+
+        float forward = Vector2.Dot(offset, windDirection);
+        if (forward < 0f || forward > surfaceLength)
+        {
+            candidate = default;
+            return false;
+        }
+
+        Vector2 sideDirection = new Vector2(-windDirection.y, windDirection.x);
+        float side = Mathf.Abs(Vector2.Dot(offset, sideDirection));
+        float halfWidth = GetSurfaceHalfWidth(forward);
+
+        if (side > halfWidth)
+        {
+            candidate = default;
+            return false;
+        }
+
+        float rate = surfaceLength <= 0.0001f ? 0f : forward / surfaceLength;
+        float speed = baseWind * speedScale * Mathf.Lerp(1f, 0.65f, rate);
+
+        Vector2 liftedDirection = GetSurfaceLiftedDirection(windDirection);
+        candidate = new WindCandidate(windable, liftedDirection, forward, speed);
+        return true;
+    }
+
+    private bool TryCreateTornadoCandidate(
+        Windable windable,
+        Vector2 offset,
+        out WindCandidate candidate)
+    {
+        float distance = offset.magnitude;
+        if (distance <= 0.0001f || distance > radius)
+        {
+            candidate = default;
+            return false;
+        }
+
+        Vector2 outward = offset / distance;
+        Vector2 inward = -outward;
+        Vector2 tangent = new Vector2(-offset.y, offset.x).normalized * tornadoSpinRatio;
+        Vector2 swirl = (tangent + inward * tornadoInwardRatio).normalized;
+        float centerPull = Mathf.Lerp(1.2f, 0.75f, distance / Mathf.Max(0.0001f, radius));
+
+        candidate = new WindCandidate(windable, swirl, distance, GetRingSpeed(distance, radius) * centerPull);
+        return true;
+    }
+
+    private Vector2 GetSurfaceLiftedDirection(Vector2 windDirection)
+    {
+        if (surfaceLiftRatio <= 0f || windDirection.sqrMagnitude <= 0.0001f)
+        {
+            return windDirection;
+        }
+
+        Vector2 direction = windDirection.normalized;
+        Vector2 lifted = direction + Vector2.up * surfaceLiftRatio;
+        return lifted.sqrMagnitude <= 0.0001f ? direction : lifted.normalized;
+    }
+
+    private float GetSurfaceHalfWidth(float forwardDistance)
+    {
+        float rate = surfaceLength <= 0.0001f ? 0f : Mathf.Clamp01(forwardDistance / surfaceLength);
+        return Mathf.Lerp(surfaceStartWidth, surfaceEndWidth, rate) * 0.5f;
+    }
+
+    private float GetQueryRadius()
+    {
+        return windShape == WindShape.Surface
+            ? Mathf.Max(surfaceLength, surfaceEndWidth)
+            : radius;
+    }
+
+    private float GetRingSpeed(float distance, float effectiveRadius)
+    {
+        float rate = distance / Mathf.Max(0.0001f, effectiveRadius);
         float scaledBase = baseWind * speedScale;
 
         if (rate <= innerRatio)
@@ -218,6 +475,17 @@ public class WindBlower : MonoBehaviour
         ring.enabled = false;
 
         return ring;
+    }
+
+    private void ShowWindShape(Vector2 center)
+    {
+        if (windShape == WindShape.Surface)
+        {
+            SetRingsVisible(false);
+            return;
+        }
+
+        ShowWindRings(center);
     }
 
     private void ShowWindRings(Vector2 center)
@@ -292,6 +560,22 @@ public class WindBlower : MonoBehaviour
         Gizmos.DrawWireSphere(center, radius * middleRatio);
     }
 
+}
+
+public readonly struct WindBlowResult
+{
+    public readonly int PushedCount;
+    public readonly float Power;
+    public readonly WindShape Shape;
+    public readonly float Interval;
+
+    public WindBlowResult(int pushedCount, float power, WindShape shape, float interval)
+    {
+        PushedCount = pushedCount;
+        Power = power;
+        Shape = shape;
+        Interval = interval;
+    }
 }
 
 public readonly struct WindCandidate

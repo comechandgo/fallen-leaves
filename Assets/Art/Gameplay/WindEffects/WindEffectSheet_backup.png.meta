@@ -1,0 +1,1122 @@
+fileFormatVersion: 2
+guid: cd70f1ed84b7bb14eb78ec04b7d3e719
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -5229514295294846118
+    second: WindEffectSheet_backup_0
+  - first:
+      213: -8889452572633118358
+    second: WindEffectSheet_backup_1
+  - first:
+      213: -2423151821469802647
+    second: WindEffectSheet_backup_2
+  - first:
+      213: 1532833698828274256
+    second: WindEffectSheet_backup_3
+  - first:
+      213: -8996158413713919722
+    second: WindEffectSheet_backup_4
+  - first:
+      213: 54981929260822221
+    second: WindEffectSheet_backup_5
+  - first:
+      213: 5923522137010755119
+    second: WindEffectSheet_backup_6
+  - first:
+      213: 5200750323882890443
+    second: WindEffectSheet_backup_7
+  - first:
+      213: -6554518849936961839
+    second: WindEffectSheet_backup_8
+  - first:
+      213: 508264225495033815
+    second: WindEffectSheet_backup_9
+  - first:
+      213: -5512709616640364142
+    second: WindEffectSheet_backup_10
+  - first:
+      213: 7440657249033422825
+    second: WindEffectSheet_backup_11
+  - first:
+      213: 2071942379384797452
+    second: WindEffectSheet_backup_12
+  - first:
+      213: -8725900483889200570
+    second: WindEffectSheet_backup_13
+  - first:
+      213: 7385677980130765421
+    second: WindEffectSheet_backup_14
+  - first:
+      213: 2415222169982401018
+    second: WindEffectSheet_backup_15
+  - first:
+      213: 233148913321262057
+    second: WindEffectSheet_backup_16
+  - first:
+      213: 7521846305618836413
+    second: WindEffectSheet_backup_17
+  - first:
+      213: -4419482597477595911
+    second: WindEffectSheet_backup_18
+  - first:
+      213: 4447395040507887487
+    second: WindEffectSheet_backup_19
+  - first:
+      213: 2548215343802811727
+    second: WindEffectSheet_backup_20
+  - first:
+      213: 1417879851899003744
+    second: WindEffectSheet_backup_21
+  - first:
+      213: -1573022292920234752
+    second: WindEffectSheet_backup_22
+  - first:
+      213: -4428123585937904641
+    second: WindEffectSheet_backup_23
+  - first:
+      213: 901775772666688598
+    second: WindEffectSheet_backup_24
+  - first:
+      213: 8337736951421084866
+    second: WindEffectSheet_backup_25
+  - first:
+      213: 8989224862128860764
+    second: WindEffectSheet_backup_26
+  - first:
+      213: -5569090145064838362
+    second: WindEffectSheet_backup_27
+  - first:
+      213: -3724745270653896911
+    second: WindEffectSheet_backup_28
+  - first:
+      213: -8668521487526857457
+    second: WindEffectSheet_backup_29
+  - first:
+      213: -4724447847205248329
+    second: WindEffectSheet_backup_30
+  - first:
+      213: 784662538723972638
+    second: WindEffectSheet_backup_31
+  - first:
+      213: -9152942857529209198
+    second: WindEffectSheet_backup_32
+  - first:
+      213: 7769242962978515037
+    second: WindEffectSheet_backup_33
+  - first:
+      213: -8578707401662182026
+    second: WindEffectSheet_backup_34
+  - first:
+      213: 169480825492745605
+    second: WindEffectSheet_backup_35
+  - first:
+      213: -4975249064741938855
+    second: WindEffectSheet_backup_36
+  - first:
+      213: 4731814338717623666
+    second: WindEffectSheet_backup_37
+  - first:
+      213: 4428282357623023922
+    second: WindEffectSheet_backup_38
+  - first:
+      213: -351789883494113679
+    second: WindEffectSheet_backup_39
+  - first:
+      213: -9062882332064761756
+    second: WindEffectSheet_backup_40
+  - first:
+      213: 1434669981260761991
+    second: WindEffectSheet_backup_41
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1254
+        height: 1254
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5b9f11a4780d67b0800000000000000
+      internalID: -5229514295294846118
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_1
+      rect:
+        serializedVersion: 2
+        x: 149
+        y: 1220
+        width: 29
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a694588cbf152a480800000000000000
+      internalID: -8889452572633118358
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_2
+      rect:
+        serializedVersion: 2
+        x: 345
+        y: 1247
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96f937cb14c3f5ed0800000000000000
+      internalID: -2423151821469802647
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_3
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 1245
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05a4866b028b54510800000000000000
+      internalID: 1532833698828274256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_4
+      rect:
+        serializedVersion: 2
+        x: 806
+        y: 1241
+        width: 24
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 611b07f1699372380800000000000000
+      internalID: -8996158413713919722
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_5
+      rect:
+        serializedVersion: 2
+        x: 836
+        y: 1249
+        width: 9
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dce28aaf5c553c000800000000000000
+      internalID: 54981929260822221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_6
+      rect:
+        serializedVersion: 2
+        x: 918
+        y: 1249
+        width: 16
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2650bbdff3943250800000000000000
+      internalID: 5923522137010755119
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_7
+      rect:
+        serializedVersion: 2
+        x: 940
+        y: 1249
+        width: 9
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc499846dd6cc2840800000000000000
+      internalID: 5200750323882890443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_8
+      rect:
+        serializedVersion: 2
+        x: 1103
+        y: 1231
+        width: 62
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dec7e355dba905a0800000000000000
+      internalID: -6554518849936961839
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_9
+      rect:
+        serializedVersion: 2
+        x: 108
+        y: 51
+        width: 24
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d7aba4ce97bd0700800000000000000
+      internalID: 508264225495033815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_10
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 33
+        width: 37
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 291754eafcbee73b0800000000000000
+      internalID: -5512709616640364142
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_11
+      rect:
+        serializedVersion: 2
+        x: 307
+        y: 57
+        width: 16
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e782108856824760800000000000000
+      internalID: 7440657249033422825
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_12
+      rect:
+        serializedVersion: 2
+        x: 322
+        y: 57
+        width: 11
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c09fe4ecd9401cc10800000000000000
+      internalID: 2071942379384797452
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_13
+      rect:
+        serializedVersion: 2
+        x: 382
+        y: 35
+        width: 19
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6420060edbf57e680800000000000000
+      internalID: -8725900483889200570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_14
+      rect:
+        serializedVersion: 2
+        x: 488
+        y: 33
+        width: 37
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6a6e1fedf23f7660800000000000000
+      internalID: 7385677980130765421
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_15
+      rect:
+        serializedVersion: 2
+        x: 522
+        y: 57
+        width: 12
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af9f27764c7948120800000000000000
+      internalID: 2415222169982401018
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_16
+      rect:
+        serializedVersion: 2
+        x: 545
+        y: 43
+        width: 17
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9eb384e83bf4c3300800000000000000
+      internalID: 233148913321262057
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_17
+      rect:
+        serializedVersion: 2
+        x: 591
+        y: 5
+        width: 27
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dbbbe7dcc57f26860800000000000000
+      internalID: 7521846305618836413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_18
+      rect:
+        serializedVersion: 2
+        x: 798
+        y: 11
+        width: 49
+        height: 69
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f4c3563ef7daa2c0800000000000000
+      internalID: -4419482597477595911
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_19
+      rect:
+        serializedVersion: 2
+        x: 808
+        y: 53
+        width: 27
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7f7e4dd93258bd30800000000000000
+      internalID: 4447395040507887487
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_20
+      rect:
+        serializedVersion: 2
+        x: 850
+        y: 49
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f45019aaa541d5320800000000000000
+      internalID: 2548215343802811727
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_21
+      rect:
+        serializedVersion: 2
+        x: 888
+        y: 51
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 063af9a86325da310800000000000000
+      internalID: 1417879851899003744
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_22
+      rect:
+        serializedVersion: 2
+        x: 936
+        y: 45
+        width: 16
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00d08be0f808b2ae0800000000000000
+      internalID: -1573022292920234752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_23
+      rect:
+        serializedVersion: 2
+        x: 239
+        y: 35
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffb64ae4f052c82c0800000000000000
+      internalID: -4428123585937904641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_24
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 21
+        width: 14
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 654f9d49940c38c00800000000000000
+      internalID: 901775772666688598
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_25
+      rect:
+        serializedVersion: 2
+        x: 565
+        y: 41
+        width: 9
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c42a14059795b370800000000000000
+      internalID: 8337736951421084866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_26
+      rect:
+        serializedVersion: 2
+        x: 645
+        y: 39
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5eec49926420cc70800000000000000
+      internalID: 8989224862128860764
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_27
+      rect:
+        serializedVersion: 2
+        x: 1139
+        y: 31
+        width: 32
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62b1845f40e96b2b0800000000000000
+      internalID: -5569090145064838362
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_28
+      rect:
+        serializedVersion: 2
+        x: 1170
+        y: 30
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 137bbdf29eb0f4cc0800000000000000
+      internalID: -3724745270653896911
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_29
+      rect:
+        serializedVersion: 2
+        x: 231
+        y: 25
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f05fe1882a933b780800000000000000
+      internalID: -8668521487526857457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_30
+      rect:
+        serializedVersion: 2
+        x: 295
+        y: 13
+        width: 14
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7b2e873d6b36f6eb0800000000000000
+      internalID: -4724447847205248329
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_31
+      rect:
+        serializedVersion: 2
+        x: 629
+        y: 23
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e16d231fb6ea3ea00800000000000000
+      internalID: 784662538723972638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_32
+      rect:
+        serializedVersion: 2
+        x: 691
+        y: 17
+        width: 7
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29ec58727f63af080800000000000000
+      internalID: -9152942857529209198
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_33
+      rect:
+        serializedVersion: 2
+        x: 723
+        y: 23
+        width: 22
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d58a906cf45e1db60800000000000000
+      internalID: 7769242962978515037
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_34
+      rect:
+        serializedVersion: 2
+        x: 754
+        y: 0
+        width: 45
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67d49e3f11f42f880800000000000000
+      internalID: -8578707401662182026
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_35
+      rect:
+        serializedVersion: 2
+        x: 898
+        y: 21
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58d2cbfa9ed1a5200800000000000000
+      internalID: 169480825492745605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_36
+      rect:
+        serializedVersion: 2
+        x: 906
+        y: 21
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95956fae55d54fab0800000000000000
+      internalID: -4975249064741938855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_37
+      rect:
+        serializedVersion: 2
+        x: 922
+        y: 27
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2752d522218caa140800000000000000
+      internalID: 4731814338717623666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_38
+      rect:
+        serializedVersion: 2
+        x: 928
+        y: 23
+        width: 14
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 239ef3b975b647d30800000000000000
+      internalID: 4428282357623023922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_39
+      rect:
+        serializedVersion: 2
+        x: 938
+        y: 21
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17ed1cef6f03e1bf0800000000000000
+      internalID: -351789883494113679
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_40
+      rect:
+        serializedVersion: 2
+        x: 954
+        y: 23
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 468bd14498c2a3280800000000000000
+      internalID: -9062882332064761756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WindEffectSheet_backup_41
+      rect:
+        serializedVersion: 2
+        x: 737
+        y: 18
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78bc6fa2fb8f8e310800000000000000
+      internalID: 1434669981260761991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    nameFileIdTable: {}
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

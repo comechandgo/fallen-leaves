@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 4691889944933074508}
   - component: {fileID: 1394422729604378125}
   - component: {fileID: 7759891701832033094}
+  - component: {fileID: 392283035127936283}
   m_Layer: 10
   m_Name: RiverArt_02
   m_TagString: Untagged
@@ -199,3 +200,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waterMask: {fileID: 2208815086785213413}
   collectorMargin: 1
+--- !u!114 &392283035127936283
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4680183074931672400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f7e2c68a9384c54988bd9b996f9e0b7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  riverPiece: {fileID: 0}
+  fillTexture: {fileID: 0}
+  widthScale: 0.92
+  sidePadding: 0.18
+  hideSourceRenderer: 1

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.U2D;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(RiverWaterMask), typeof(SpriteRenderer))]
@@ -22,6 +23,12 @@ public sealed class RiverFlowOverlay : MonoBehaviour
         SpriteRenderer riverRenderer = GetComponent<SpriteRenderer>();
         if (waterMask == null || riverRenderer == null || riverRenderer.sprite == null) return;
 
+        RiverSpriteShapeAdapter spriteShapeAdapter = GetComponent<RiverSpriteShapeAdapter>();
+        if (spriteShapeAdapter != null)
+        {
+            spriteShapeAdapter.BuildRuntimeShape();
+        }
+
         LevelRoot level = GetComponentInParent<LevelRoot>();
         Transform parent = level != null ? level.transform : transform.parent;
         GameObject root = new GameObject("RiverFlowOverlayRuntime");
@@ -29,7 +36,7 @@ public sealed class RiverFlowOverlay : MonoBehaviour
         runtimeRoot = root.transform;
 
         generatedSprite = CreateFlowLineSprite();
-        Bounds bounds = riverRenderer.bounds;
+        Bounds bounds = GetFlowBounds(riverRenderer);
         Rect spawnBounds = new Rect(bounds.min.x, bounds.min.y, bounds.size.x, bounds.size.y);
         Vector2 direction = flowDirection.sqrMagnitude > 0.001f ? flowDirection.normalized : Vector2.right;
 
@@ -48,6 +55,17 @@ public sealed class RiverFlowOverlay : MonoBehaviour
             WaterFlowLine flow = line.AddComponent<WaterFlowLine>();
             flow.Configure(waterMask, spawnBounds, direction, Random.Range(1.4f, 3.1f), Random.Range(4.5f, 9f));
         }
+    }
+
+    private Bounds GetFlowBounds(SpriteRenderer fallbackRenderer)
+    {
+        SpriteShapeRenderer shapeRenderer = GetComponentInChildren<SpriteShapeRenderer>();
+        if (shapeRenderer != null)
+        {
+            return shapeRenderer.bounds;
+        }
+
+        return fallbackRenderer.bounds;
     }
 
     private Sprite CreateFlowLineSprite()
