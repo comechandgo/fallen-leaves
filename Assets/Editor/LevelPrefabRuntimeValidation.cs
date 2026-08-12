@@ -157,12 +157,23 @@ public static class LevelPrefabRuntimeValidation
         Check(leafPrefab != null, "LeafSpawner references Leaf.prefab");
         if (leafPrefab == null) return;
 
-        Check(leafPrefab.GetComponent<SpriteRenderer>() != null, "Leaf.prefab has SpriteRenderer");
+        Check(leafPrefab.GetComponentInChildren<SpriteRenderer>(true) != null, "Leaf.prefab has SpriteVisual renderer");
         Check(leafPrefab.GetComponent<Rigidbody2D>() != null, "Leaf.prefab has Rigidbody2D");
         Check(leafPrefab.GetComponent<Collider2D>() != null, "Leaf.prefab has Collider2D");
         Check(leafPrefab.GetComponent<Windable>() != null, "Leaf.prefab has Windable");
-        Check(leafPrefab.GetComponent<YSort>() != null, "Leaf.prefab has YSort");
+        Check(leafPrefab.GetComponentInChildren<YSort>(true) != null, "Leaf.prefab SpriteVisual has YSort");
         Check(leafPrefab.GetComponent<LeafAppearance>() != null, "Leaf.prefab has LeafAppearance");
+        Check(leafPrefab.GetComponent<LeafWindFeedback>() != null, "Leaf.prefab has directional wind feedback");
+
+        Transform windDeform = leafPrefab.transform.Find("WindDeform");
+        Transform spriteVisual = windDeform != null ? windDeform.Find("SpriteVisual") : null;
+        Check(windDeform != null && spriteVisual != null, "Leaf.prefab separates physics root and deformable SpriteVisual");
+        Check(spriteVisual != null && spriteVisual.GetComponent<SpriteRenderer>() != null,
+            "Leaf.prefab keeps the renderer on SpriteVisual");
+
+        Rigidbody2D prefabBody = leafPrefab.GetComponent<Rigidbody2D>();
+        Check(prefabBody != null && Mathf.Approximately(prefabBody.drag, 0f),
+            "Leaf.prefab disables built-in linear drag in favour of ground damping");
 
         LeafAppearance appearance = leafPrefab.GetComponent<LeafAppearance>();
         SerializedObject serializedAppearance = new SerializedObject(appearance);
@@ -174,6 +185,8 @@ public static class LevelPrefabRuntimeValidation
             "Leaf.prefab width range is scaled up by one and a half");
         Check(heightRange != null && Vector2.Distance(heightRange.vector2Value, new Vector2(0.84f, 1.26f)) < 0.0001f,
             "Leaf.prefab height range is scaled up by one and a half");
+
+        ValidateLeafDamping();
     }
 
     private static void ValidateLevel(
@@ -405,16 +418,17 @@ public static class LevelPrefabRuntimeValidation
         {
             LeafLifecycle leaf = leaves[i];
             if (leaf.gameObject.layer != leafLayer
-                || leaf.GetComponent<SpriteRenderer>() == null
+                || leaf.GetComponentInChildren<SpriteRenderer>(true) == null
                 || leaf.GetComponent<Rigidbody2D>() == null
                 || leaf.GetComponent<Collider2D>() == null
                 || leaf.GetComponent<Windable>() == null
-                || leaf.GetComponent<YSort>() == null)
+                || leaf.GetComponentInChildren<YSort>(true) == null
+                || leaf.GetComponent<LeafWindFeedback>() == null)
             {
                 componentsCorrect = false;
             }
 
-            SpriteRenderer renderer = leaf.GetComponent<SpriteRenderer>();
+            SpriteRenderer renderer = leaf.GetComponentInChildren<SpriteRenderer>(true);
             if (renderer == null || renderer.sprite == null)
             {
                 sizesCorrect = false;
@@ -645,6 +659,81 @@ public static class LevelPrefabRuntimeValidation
             }
         }
         Check(pushed, "WindBlower still applies impulse to spawned Leaf.prefab instances");
+
+        ValidateLeafWindFeedback(leaf);
+    }
+
+    private static void ValidateLeafDamping()
+    {
+        Vector2 diagonal = new Vector2(3f, 4f);
+        Vector2 dampedDiagonal = InvokeLeafDamping(diagonal, 0.02f);
+        float cross = diagonal.x * dampedDiagonal.y - diagonal.y * dampedDiagonal.x;
+        Check(Mathf.Abs(cross) < 0.0001f && Vector2.Dot(diagonal, dampedDiagonal) > 0f,
+            "Leaf damping preserves the current movement direction");
+
+        float highSpeedLoss = 8f - InvokeLeafDamping(Vector2.right * 8f, 0.02f).magnitude;
+        float lowSpeedLoss = 1f - InvokeLeafDamping(Vector2.right, 0.02f).magnitude;
+        Check(highSpeedLoss > lowSpeedLoss * 4f,
+            "Leaf damping removes proportionally more speed from a fast-moving leaf");
+
+        Vector2 simulatedVelocity = Vector2.right * 8f;
+        float elapsed = 0f;
+        while (simulatedVelocity.sqrMagnitude > 0f && elapsed < 3f)
+        {
+            simulatedVelocity = InvokeLeafDamping(simulatedVelocity, 0.02f);
+            elapsed += 0.02f;
+        }
+        Check(elapsed >= 1f && elapsed <= 2f,
+            $"Leaf damping stops an 8 m/s leaf in the intended 1-2 second window ({elapsed:0.00}s)");
+
+        Check(InvokeLeafDamping(Vector2.right * 0.08f, 0.02f) == Vector2.zero,
+            "Leaf damping snaps movement at the 0.08 m/s stop threshold");
+    }
+
+    private static Vector2 InvokeLeafDamping(Vector2 velocity, float deltaTime)
+    {
+        MethodInfo method = typeof(Windable).GetMethod(
+            "CalculateDampedVelocity",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        if (method == null) throw new MissingMethodException(nameof(Windable), "CalculateDampedVelocity");
+        return (Vector2)method.Invoke(null, new object[] { velocity, deltaTime, 1.5f, 0.30f, 0.08f });
+    }
+
+    private static void ValidateLeafWindFeedback(Windable leaf)
+    {
+        LeafWindFeedback feedback = leaf.GetComponent<LeafWindFeedback>();
+        Rigidbody2D body = leaf.GetComponent<Rigidbody2D>();
+        Transform windDeform = leaf.transform.Find("WindDeform");
+        Transform spriteVisual = windDeform != null ? windDeform.Find("SpriteVisual") : null;
+        Check(feedback != null && body != null && windDeform != null && spriteVisual != null,
+            "Wind feedback validation has the complete leaf hierarchy");
+        if (feedback == null || body == null || windDeform == null || spriteVisual == null) return;
+
+        body.velocity = Vector2.zero;
+        SetPrivateField(leaf, "lastWindPushTime", -999f);
+        bool firstPush = leaf.TryPushByWind(Vector2.right, 1f, 0.5f);
+        Check(firstPush && feedback.enabled, "A successful wind push starts leaf squash feedback");
+
+        InvokePrivate(feedback, "ApplyPose", 0.04f);
+        Vector3 peakScale = windDeform.localScale;
+        Vector2 deformWorldAxis = windDeform.TransformVector(Vector3.right).normalized;
+        Check(Vector2.Dot(deformWorldAxis, Vector2.right) > 0.999f,
+            "Leaf squash axis aligns with the world-space wind direction");
+        Check(Mathf.Abs(peakScale.x - 0.94f) < 0.001f && Mathf.Abs(peakScale.y - 1.03f) < 0.001f,
+            "Leaf wind feedback reaches the configured subtle squash peak");
+
+        SetPrivateField(feedback, "elapsed", 0.1f);
+        bool cooldownPush = leaf.TryPushByWind(Vector2.up, 1f, 0.5f);
+        Check(!cooldownPush && Mathf.Approximately(GetPrivateField<float>(feedback, "elapsed"), 0.1f),
+            "A wind push rejected by cooldown does not restart leaf feedback");
+
+        InvokePrivate(feedback, "ApplyPose", 0.22f);
+        Check(!feedback.enabled
+            && windDeform.localScale == Vector3.one
+            && windDeform.localRotation == Quaternion.identity
+            && spriteVisual.localScale == Vector3.one
+            && spriteVisual.localRotation == Quaternion.identity,
+            "Leaf wind feedback restores the exact resting transform and disables itself");
     }
 
     private static void AwardUpgradeCoins(LevelRoot root, int count)

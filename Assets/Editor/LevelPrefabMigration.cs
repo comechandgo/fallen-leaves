@@ -331,6 +331,11 @@ public static class LevelPrefabMigration
     private static GameObject CreateLeafPrefab()
     {
         GameObject root = new GameObject("Leaf") { layer = LeafLayer };
+        GameObject windDeform = new GameObject("WindDeform") { layer = LeafLayer };
+        windDeform.transform.SetParent(root.transform, false);
+        GameObject spriteVisual = new GameObject("SpriteVisual") { layer = LeafLayer };
+        spriteVisual.transform.SetParent(windDeform.transform, false);
+
         Sprite[] sprites =
         {
             LoadGameplaySprite("ggj/通用/叶子1.png"),
@@ -339,23 +344,25 @@ public static class LevelPrefabMigration
             LoadGameplaySprite("ggj/通用/叶子4.png")
         };
 
-        SpriteRenderer renderer = root.AddComponent<SpriteRenderer>();
+        SpriteRenderer renderer = spriteVisual.AddComponent<SpriteRenderer>();
         renderer.sprite = sprites[0];
         renderer.sortingLayerName = "Actor";
 
         Rigidbody2D body = root.AddComponent<Rigidbody2D>();
         body.gravityScale = 0f;
-        body.drag = 0.55f;
+        body.drag = 0f;
         body.angularDrag = 1.2f;
         body.mass = 0.75f;
         body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         body.interpolation = RigidbodyInterpolation2D.Interpolate;
         root.AddComponent<CircleCollider2D>().radius = 0.42f;
 
+        root.AddComponent<LeafWindFeedback>().Configure(windDeform.transform, spriteVisual.transform);
         root.AddComponent<Windable>().Configure(0.75f);
-        root.AddComponent<YSort>().Configure("Actor", 1000, 3f, true);
+        spriteVisual.AddComponent<YSort>().Configure("Actor", 1000, 3f, true);
         root.AddComponent<LeafAppearance>().Configure(
             sprites,
+            renderer,
             new Vector2(0.99f, 1.38f),
             new Vector2(0.84f, 1.26f),
             new Vector2(0.45f, 1.05f));

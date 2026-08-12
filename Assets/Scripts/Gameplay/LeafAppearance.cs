@@ -1,17 +1,24 @@
 using UnityEngine;
 
 [DisallowMultipleComponent]
-[RequireComponent(typeof(SpriteRenderer), typeof(Rigidbody2D), typeof(Windable))]
+[RequireComponent(typeof(Rigidbody2D), typeof(Windable))]
 public sealed class LeafAppearance : MonoBehaviour
 {
+    [SerializeField] private SpriteRenderer targetRenderer;
     [SerializeField] private Sprite[] sprites = new Sprite[0];
     [SerializeField] private Vector2 widthRange = new Vector2(0.99f, 1.38f);
     [SerializeField] private Vector2 heightRange = new Vector2(0.84f, 1.26f);
     [SerializeField] private Vector2 weightRange = new Vector2(0.45f, 1.05f);
 
-    public void Configure(Sprite[] leafSprites, Vector2 widths, Vector2 heights, Vector2 weights)
+    public void Configure(
+        Sprite[] leafSprites,
+        SpriteRenderer renderer,
+        Vector2 widths,
+        Vector2 heights,
+        Vector2 weights)
     {
         sprites = leafSprites ?? new Sprite[0];
+        targetRenderer = renderer;
         widthRange = widths;
         heightRange = heights;
         weightRange = weights;
@@ -19,7 +26,14 @@ public sealed class LeafAppearance : MonoBehaviour
 
     public void Randomize()
     {
-        SpriteRenderer renderer = GetComponent<SpriteRenderer>();
+        SpriteRenderer renderer = targetRenderer;
+        if (renderer == null) renderer = GetComponentInChildren<SpriteRenderer>(true);
+        targetRenderer = renderer;
+        if (renderer == null)
+        {
+            Debug.LogError($"LeafAppearance on {name} is missing its SpriteVisual renderer.", this);
+            return;
+        }
         if (sprites != null && sprites.Length > 0)
         {
             renderer.sprite = sprites[Random.Range(0, sprites.Length)];
@@ -51,7 +65,7 @@ public sealed class LeafAppearance : MonoBehaviour
 
         GetComponent<Windable>().Configure(weight);
 
-        YSort sort = GetComponent<YSort>();
+        YSort sort = renderer.GetComponent<YSort>();
         if (sort != null)
         {
             sort.Configure("Actor", 1000, worldSize.y * 0.5f, true);
