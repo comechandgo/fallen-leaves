@@ -130,7 +130,8 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      RiverSpriteShapeFill_0: 2945219874701306515
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

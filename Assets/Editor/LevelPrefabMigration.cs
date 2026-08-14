@@ -16,6 +16,9 @@ public static class LevelPrefabMigration
     private const string CatalogPath = "Assets/Resources/LevelCatalog.asset";
     private const string RiverMaterialPath = MaterialRoot + "/RiverSoftBlend.mat";
     private const string RiverShaderPath = MaterialRoot + "/RiverSoftBlend.shader";
+    private const string TreeMaterialPath = MaterialRoot + "/TreeCursorFade.mat";
+    private const string TreeShaderPath = MaterialRoot + "/TreeCursorFade.shader";
+    private const string WholeRiverRelativePath = "ggj地图补充/整河.png";
     private const int GroundSeed = 12090;
     private const float GroundPatchWorldSize = 26f;
 
@@ -29,13 +32,13 @@ public static class LevelPrefabMigration
         RunWithDialog(false);
     }
 
-    [MenuItem("Tools/Fallen Leaves/Force Rebuild Four Levels From TMJ")]
+    [MenuItem("Tools/Fallen Leaves/Force Rebuild Three Levels From TMJ")]
     public static void RunForceMenu()
     {
         bool confirmed = EditorUtility.DisplayDialog(
-            "Force rebuild all four levels?",
+            "Force rebuild all three levels?",
             "This replaces every authored level layout with map_120x90_v1.tmj and discards manual prefab layout edits.",
-            "Rebuild four levels",
+            "Rebuild three levels",
             "Cancel");
         if (!confirmed) return;
         RunWithDialog(true);
@@ -105,9 +108,10 @@ public static class LevelPrefabMigration
             Tile yellowTile = CreateOrUpdateTile(
                 $"{TileRoot}/GroundYellow.asset",
                 LoadGameplaySprite("ggj/通用/草地黄.png"));
-            Material riverMaterial = CreateOrUpdateRiverMaterial();
+            CreateOrUpdateRiverMaterial();
+            Material treeMaterial = CreateOrUpdateTreeCursorFadeMaterial();
 
-            Dictionary<string, GameObject> prefabs = CreateBasePrefabs(riverMaterial, report);
+            Dictionary<string, GameObject> prefabs = CreateBasePrefabs(treeMaterial, report);
             ValidatePrefabKeys(layout, prefabs);
 
             ModeSpec[] modes = CreateModeSpecs();
@@ -166,7 +170,7 @@ public static class LevelPrefabMigration
         for (int i = 1; i <= 3; i++) files.Add($"ggj/通用/长条石头{i}.png");
         for (int i = 1; i <= 2; i++) files.Add($"ggj/通用/芦苇{i}.png");
         for (int i = 1; i <= 9; i++) files.Add($"ggj地图补充/树{i}.png");
-        for (int i = 1; i <= 3; i++) files.Add($"ggj地图补充/河{i}.png");
+        files.Add(WholeRiverRelativePath);
         for (int i = 1; i <= 3; i++) files.Add($"ggj地图补充/湖{i}.png");
         return files;
     }
@@ -213,7 +217,12 @@ public static class LevelPrefabMigration
             string sourceAbsolute = ToAbsolutePath(sourceAssetPath);
             string destinationAbsolute = ToAbsolutePath(destinationAssetPath);
             if (!File.Exists(sourceAbsolute)) throw new FileNotFoundException("Missing source gameplay art", sourceAssetPath);
-            if (!File.Exists(destinationAbsolute))
+            if (relative == WholeRiverRelativePath)
+            {
+                File.Copy(sourceAbsolute, destinationAbsolute, true);
+                copied++;
+            }
+            else if (!File.Exists(destinationAbsolute))
             {
                 File.Copy(sourceAbsolute, destinationAbsolute, false);
                 copied++;
@@ -225,11 +234,15 @@ public static class LevelPrefabMigration
         }
 
         AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-        for (int i = 0; i < files.Count; i++) ConfigureSpriteImporter(GameplayArtRoot + files[i], files[i].StartsWith("ggj地图补充/河", StringComparison.Ordinal));
+        for (int i = 0; i < files.Count; i++)
+        {
+            bool wholeRiver = files[i] == WholeRiverRelativePath;
+            ConfigureSpriteImporter(GameplayArtRoot + files[i], wholeRiver, wholeRiver);
+        }
         report.Add($"Gameplay sprites: {copied} copied, {reused} reused, {files.Count} configured.");
     }
 
-    private static void ConfigureSpriteImporter(string assetPath, bool riverMaskTexture)
+    private static void ConfigureSpriteImporter(string assetPath, bool riverMaskTexture, bool fullResolution)
     {
         TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
         if (importer == null) throw new InvalidOperationException($"Missing TextureImporter for {assetPath}");
@@ -242,6 +255,7 @@ public static class LevelPrefabMigration
         importer.alphaIsTransparency = true;
         importer.isReadable = riverMaskTexture;
         importer.textureCompression = riverMaskTexture ? TextureImporterCompression.Uncompressed : TextureImporterCompression.Compressed;
+        if (fullResolution) importer.maxTextureSize = 8192;
         importer.SaveAndReimport();
     }
 
@@ -286,7 +300,31 @@ public static class LevelPrefabMigration
         return material;
     }
 
-    private static Dictionary<string, GameObject> CreateBasePrefabs(Material riverMaterial, List<string> report)
+    private static Material CreateOrUpdateTreeCursorFadeMaterial()
+    {
+        Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(TreeShaderPath);
+        if (shader == null) shader = Shader.Find("FallenLeaves/TreeCursorFade");
+        if (shader == null) throw new InvalidOperationException($"Missing tree cursor fade shader: {TreeShaderPath}");
+
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(TreeMaterialPath);
+        if (material == null)
+        {
+            material = new Material(shader);
+            AssetDatabase.CreateAsset(material, TreeMaterialPath);
+        }
+        else
+        {
+            material.shader = shader;
+        }
+
+        material.SetFloat("_InnerRadius", 35f);
+        material.SetFloat("_OuterRadius", 60f);
+        material.SetFloat("_MinimumOpacity", 0.25f);
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static Dictionary<string, GameObject> CreateBasePrefabs(Material treeMaterial, List<string> report)
     {
         Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>
         {
@@ -313,16 +351,14 @@ public static class LevelPrefabMigration
         for (int i = 1; i <= 9; i++)
         {
             string key = $"Tree_{i:00}";
-            prefabs[key] = CreateDecorationPrefab(key, $"ggj地图补充/树{i}.png");
+            prefabs[key] = CreateTreePrefab(key, $"ggj地图补充/树{i}.png", treeMaterial);
         }
         for (int i = 1; i <= 3; i++)
         {
             string pondKey = $"Pond_{i:00}";
             prefabs[pondKey] = CreatePondPrefab(pondKey, $"ggj地图补充/湖{i}.png");
-
-            string riverKey = $"RiverArt_{i:00}";
-            prefabs[riverKey] = CreateRiverArtPrefab(riverKey, $"ggj地图补充/河{i}.png", riverMaterial);
         }
+        prefabs["MainRiverWhole"] = CreateWholeRiverPrefab();
 
         report.Add($"Base prefabs created or updated: {prefabs.Count}");
         return prefabs;
@@ -404,6 +440,25 @@ public static class LevelPrefabMigration
         return SaveBasePrefab(root, $"{PrefabRoot}/Props/{name}.prefab");
     }
 
+    private static GameObject CreateTreePrefab(string name, string spritePath, Material material)
+    {
+        GameObject root = CreateSpriteRoot(name, spritePath, "Actor", 960);
+        SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
+        renderer.sharedMaterial = material;
+        root.AddComponent<YSort>().Configure("Actor", 960, renderer.sprite.bounds.extents.y, false);
+        root.AddComponent<LeafDropSource>().Configure(renderer);
+
+        GameObject physical = new GameObject("TreeTrunkCollider") { layer = ObstacleLayer };
+        physical.transform.SetParent(root.transform, false);
+        CapsuleCollider2D trunk = physical.AddComponent<CapsuleCollider2D>();
+        trunk.isTrigger = true;
+        Bounds bounds = renderer.sprite.bounds;
+        trunk.direction = CapsuleDirection2D.Vertical;
+        trunk.size = new Vector2(bounds.size.x * 0.28f, bounds.size.y * 0.24f);
+        trunk.offset = new Vector2(bounds.center.x, bounds.min.y + bounds.size.y * 0.22f);
+        return SaveBasePrefab(root, $"{PrefabRoot}/Props/{name}.prefab");
+    }
+
     private static GameObject CreatePondPrefab(string name, string spritePath)
     {
         GameObject root = CreateSpriteRoot(name, spritePath, "Ground", 4);
@@ -417,12 +472,11 @@ public static class LevelPrefabMigration
         return SaveBasePrefab(root, $"{PrefabRoot}/Water/{name}.prefab");
     }
 
-    private static GameObject CreateRiverArtPrefab(string name, string spritePath, Material material)
+    private static GameObject CreateWholeRiverPrefab()
     {
-        GameObject root = CreateSpriteRoot(name, spritePath, "Ground", 2);
+        GameObject root = CreateSpriteRoot("MainRiverWhole", WholeRiverRelativePath, "Ground", 2);
         root.layer = RiverLayer;
         SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
-        renderer.sharedMaterial = material;
 
         BoxCollider2D collider = root.AddComponent<BoxCollider2D>();
         collider.isTrigger = true;
@@ -432,10 +486,9 @@ public static class LevelPrefabMigration
         mask.Configure(renderer, renderer.sprite.texture);
         RiverImagePiece piece = root.AddComponent<RiverImagePiece>();
         piece.Configure(renderer, mask);
-        root.AddComponent<RiverSpriteShapeAdapter>();
-        root.AddComponent<RiverFlowOverlay>();
-        root.AddComponent<RiverCollector>().SetWaterMask(mask, 1f);
-        return SaveBasePrefab(root, $"{PrefabRoot}/Water/{name}.prefab");
+        root.AddComponent<RiverFlowOverlay>().Configure(36);
+        root.AddComponent<RiverCollector>().SetWaterMask(mask, 0f);
+        return SaveBasePrefab(root, $"{PrefabRoot}/Water/MainRiverWhole.prefab");
     }
 
     private static GameObject CreateSpriteRoot(string name, string spritePath, string sortingLayer, int sortingOrder)
@@ -463,7 +516,7 @@ public static class LevelPrefabMigration
         ValidateObjectKeys(layout.Obstacles, prefabs);
         ValidateObjectKeys(layout.Decorations, prefabs);
         ValidateObjectKeys(layout.Landmarks, prefabs);
-        string[] required = { "Leaf", "BoundaryWall", "WindBlower", "Pond_01", "RiverArt_01", "RiverArt_02", "RiverArt_03" };
+        string[] required = { "Leaf", "BoundaryWall", "WindBlower", "Pond_01", "MainRiverWhole" };
         for (int i = 0; i < required.Length; i++)
         {
             if (!prefabs.TryGetValue(required[i], out GameObject prefab) || prefab == null)
@@ -537,6 +590,12 @@ public static class LevelPrefabMigration
             mode.EndlessSpawnBatch,
             mode.EndlessSpawnInterval,
             mode.EndlessMaxLeaves,
+            mode.EndlessSurvivalMaximum,
+            mode.EndlessSurvivalInitial,
+            mode.EndlessSurvivalPerLeaf,
+            mode.EndlessSurvivalBaseDrain,
+            mode.EndlessSurvivalStageSeconds,
+            mode.EndlessSurvivalStageMultiplier,
             ground,
             spawner,
             windBlower);
@@ -615,46 +674,29 @@ public static class LevelPrefabMigration
     {
         GameObject group = new GameObject("Water");
         group.transform.SetParent(parent, false);
-        CreateRiverImageAssembly(group.transform, layout, prefabs);
+        CreateWholeRiver(group.transform, layout, prefabs);
         CreateLake(group.transform, layout.Lake, prefabs["Pond_01"]);
     }
 
-    private static void CreateRiverImageAssembly(
+    private static void CreateWholeRiver(
         Transform parent,
         TiledMapPrototypeImporter.Layout layout,
         Dictionary<string, GameObject> prefabs)
     {
-        GameObject riverGroup = new GameObject("MainRiver_ImagePieces");
-        riverGroup.transform.SetParent(parent, false);
+        GameObject instance = InstantiatePrefab(prefabs["MainRiverWhole"], parent);
+        instance.name = "MainRiver_Whole";
+        RiverImagePiece piece = instance.GetComponent<RiverImagePiece>();
+        if (piece == null) throw new InvalidOperationException("MainRiverWhole has no RiverImagePiece component.");
 
-        string[] sequence =
-        {
-            "RiverArt_02", "RiverArt_03", "RiverArt_01", "RiverArt_02", "RiverArt_03", "RiverArt_01"
-        };
-        float routeLength = GetPolylineLength(layout.RiverPoints);
-        const float overlap = 0.75f;
+        FitRiverPiece(
+            instance.transform,
+            piece,
+            layout.RiverPoints[0],
+            layout.RiverPoints[layout.RiverPoints.Length - 1]);
 
-        for (int i = 0; i < sequence.Length; i++)
-        {
-            float nominalStart = routeLength * i / sequence.Length;
-            float nominalEnd = routeLength * (i + 1) / sequence.Length;
-            float startDistance = Mathf.Max(0f, nominalStart - (i > 0 ? overlap * 0.5f : 0f));
-            float endDistance = Mathf.Min(routeLength, nominalEnd + (i < sequence.Length - 1 ? overlap * 0.5f : 0f));
-            Vector2 targetEntry = PointAtDistance(layout.RiverPoints, startDistance);
-            Vector2 targetExit = PointAtDistance(layout.RiverPoints, endDistance);
-
-            GameObject instance = InstantiatePrefab(prefabs[sequence[i]], riverGroup.transform);
-            instance.name = $"RiverPiece_{i + 1:00}_{sequence[i]}";
-            RiverImagePiece piece = instance.GetComponent<RiverImagePiece>();
-            if (piece == null) throw new InvalidOperationException($"{sequence[i]} has no RiverImagePiece component.");
-            FitRiverPiece(instance.transform, piece, targetEntry, targetExit);
-
-            SpriteRenderer renderer = instance.GetComponent<SpriteRenderer>();
-            if (renderer != null) renderer.sortingOrder = 2 + i;
-            RiverCollector collector = instance.GetComponent<RiverCollector>();
-            RiverWaterMask mask = instance.GetComponent<RiverWaterMask>();
-            if (collector != null) collector.SetWaterMask(mask, layout.RiverCollectorMargin);
-        }
+        RiverCollector collector = instance.GetComponent<RiverCollector>();
+        RiverWaterMask mask = instance.GetComponent<RiverWaterMask>();
+        if (collector != null) collector.SetWaterMask(mask, 0f);
     }
 
     private static void FitRiverPiece(Transform transform, RiverImagePiece piece, Vector2 targetEntry, Vector2 targetExit)
@@ -737,6 +779,8 @@ public static class LevelPrefabMigration
     private static void AddObstacleFootprints(GameObject instance, string prefabKey, SpriteRenderer renderer)
     {
         if (renderer == null || renderer.sprite == null) return;
+        if (prefabKey.StartsWith("Tree_", StringComparison.Ordinal)) return;
+
         instance.layer = ObstacleLayer;
 
         GameObject exclusion = new GameObject("SpawnExclusion") { layer = ObstacleLayer };
@@ -746,14 +790,6 @@ public static class LevelPrefabMigration
         exclusionCollider.size = renderer.sprite.bounds.size;
         exclusionCollider.offset = renderer.sprite.bounds.center;
 
-        if (!prefabKey.StartsWith("Tree_", StringComparison.Ordinal)) return;
-        GameObject physical = new GameObject("TreeTrunkCollider") { layer = ObstacleLayer };
-        physical.transform.SetParent(instance.transform, false);
-        CapsuleCollider2D trunk = physical.AddComponent<CapsuleCollider2D>();
-        Bounds bounds = renderer.sprite.bounds;
-        trunk.direction = CapsuleDirection2D.Vertical;
-        trunk.size = new Vector2(bounds.size.x * 0.28f, bounds.size.y * 0.24f);
-        trunk.offset = new Vector2(bounds.center.x, bounds.min.y + bounds.size.y * 0.22f);
     }
 
     private static LeafSpawner CreateLeafSpawner(
@@ -847,7 +883,6 @@ public static class LevelPrefabMigration
         LevelCatalog.Entry[] entries =
         {
             new LevelCatalog.Entry { Id = LevelId.SimpleSmall, Prefab = levels[LevelId.SimpleSmall] },
-            new LevelCatalog.Entry { Id = LevelId.ClassicLarge, Prefab = levels[LevelId.ClassicLarge] },
             new LevelCatalog.Entry { Id = LevelId.TimedChallenge, Prefab = levels[LevelId.TimedChallenge] },
             new LevelCatalog.Entry { Id = LevelId.Endless, Prefab = levels[LevelId.Endless] }
         };
@@ -863,12 +898,43 @@ public static class LevelPrefabMigration
         List<string> report)
     {
         List<string> errors = new List<string>();
+        Material treeMaterial = AssetDatabase.LoadAssetAtPath<Material>(TreeMaterialPath);
+        if (treeMaterial == null
+            || treeMaterial.shader == null
+            || treeMaterial.shader.name != "FallenLeaves/TreeCursorFade")
+        {
+            errors.Add("TreeCursorFade material is missing or uses the wrong shader");
+        }
+        else if (!Mathf.Approximately(treeMaterial.GetFloat("_InnerRadius"), 35f)
+            || !Mathf.Approximately(treeMaterial.GetFloat("_OuterRadius"), 60f)
+            || !Mathf.Approximately(treeMaterial.GetFloat("_MinimumOpacity"), 0.25f))
+        {
+            errors.Add("TreeCursorFade material does not use the expected 35/60 pixel radii and 0.25 opacity");
+        }
+
+        for (int treeIndex = 1; treeIndex <= 9; treeIndex++)
+        {
+            GameObject tree = AssetDatabase.LoadAssetAtPath<GameObject>(
+                $"{PrefabRoot}/Props/Tree_{treeIndex:00}.prefab");
+            SpriteRenderer renderer = tree != null ? tree.GetComponent<SpriteRenderer>() : null;
+            if (renderer == null || renderer.sharedMaterial != treeMaterial)
+                errors.Add($"Tree_{treeIndex:00} does not use the shared TreeCursorFade material");
+        }
+
+        for (int reedIndex = 1; reedIndex <= 2; reedIndex++)
+        {
+            GameObject reed = AssetDatabase.LoadAssetAtPath<GameObject>(
+                $"{PrefabRoot}/Props/Reed_{reedIndex:00}.prefab");
+            SpriteRenderer renderer = reed != null ? reed.GetComponent<SpriteRenderer>() : null;
+            if (renderer == null || renderer.sharedMaterial == treeMaterial)
+                errors.Add($"Reed_{reedIndex:00} incorrectly uses the TreeCursorFade material");
+        }
         for (int i = 0; i < gameplayArtFiles.Count; i++)
         {
             if (LoadGameplaySprite(gameplayArtFiles[i]) == null) errors.Add($"Missing imported Sprite: {gameplayArtFiles[i]}");
         }
 
-        LevelId[] ids = { LevelId.SimpleSmall, LevelId.ClassicLarge, LevelId.TimedChallenge, LevelId.Endless };
+        LevelId[] ids = { LevelId.SimpleSmall, LevelId.TimedChallenge, LevelId.Endless };
         for (int i = 0; i < ids.Length; i++)
         {
             LevelRoot prefab = catalog.GetPrefab(ids[i]);
@@ -903,7 +969,14 @@ public static class LevelPrefabMigration
             }
 
             RiverImagePiece[] pieces = prefab.GetComponentsInChildren<RiverImagePiece>(true);
-            if (pieces.Length != 6) errors.Add($"{ids[i]} has {pieces.Length} river image pieces instead of 6");
+            if (pieces.Length != 1) errors.Add($"{ids[i]} has {pieces.Length} river image pieces instead of 1");
+            else
+            {
+                if (pieces[0].name != "MainRiver_Whole") errors.Add($"{ids[i]} has an unexpected river instance named {pieces[0].name}");
+                if (pieces[0].GetComponent<RiverSpriteShapeAdapter>() != null) errors.Add($"{ids[i]} whole river still has a segment seam adapter");
+                if (Vector2.Distance(pieces[0].WorldEntry, layout.RiverPoints[0]) > 0.1f) errors.Add($"{ids[i]} whole river entry is not aligned to the TMJ route");
+                if (Vector2.Distance(pieces[0].WorldExit, layout.RiverPoints[layout.RiverPoints.Length - 1]) > 0.1f) errors.Add($"{ids[i]} whole river exit is not aligned to the TMJ route");
+            }
             if (prefab.transform.Find("BoundaryArt") != null) errors.Add($"{ids[i]} still contains old boundary art");
             if (prefab.transform.Find("LeafSpawner/LeafSpawnArea") != null) errors.Add($"{ids[i]} still contains a fixed LeafSpawnArea");
 
@@ -956,10 +1029,9 @@ public static class LevelPrefabMigration
     {
         return new[]
         {
-            new ModeSpec(LevelId.SimpleSmall, 640, 0f, false, 0, 1.8f, 260),
-            new ModeSpec(LevelId.ClassicLarge, 1040, 0f, false, 0, 1.8f, 260),
-            new ModeSpec(LevelId.TimedChallenge, 480, 180f, false, 0, 1.8f, 260),
-            new ModeSpec(LevelId.Endless, 520, 0f, true, 8, 1.8f, 1040)
+            new ModeSpec(LevelId.SimpleSmall, 2560, 0f, false, 0, 1.8f, 260, 100f, 100f, 8f, 2f, 60f, 1.3f),
+            new ModeSpec(LevelId.TimedChallenge, 1920, 180f, false, 0, 1.8f, 260, 100f, 100f, 8f, 2f, 60f, 1.3f),
+            new ModeSpec(LevelId.Endless, 2080, 0f, true, 32, 1.8f, 4160, 100f, 100f, 8f, 2f, 60f, 1.3f)
         };
     }
 
@@ -972,6 +1044,12 @@ public static class LevelPrefabMigration
         public readonly int EndlessSpawnBatch;
         public readonly float EndlessSpawnInterval;
         public readonly int EndlessMaxLeaves;
+        public readonly float EndlessSurvivalMaximum;
+        public readonly float EndlessSurvivalInitial;
+        public readonly float EndlessSurvivalPerLeaf;
+        public readonly float EndlessSurvivalBaseDrain;
+        public readonly float EndlessSurvivalStageSeconds;
+        public readonly float EndlessSurvivalStageMultiplier;
 
         public ModeSpec(
             LevelId id,
@@ -980,7 +1058,13 @@ public static class LevelPrefabMigration
             bool endless,
             int endlessSpawnBatch,
             float endlessSpawnInterval,
-            int endlessMaxLeaves)
+            int endlessMaxLeaves,
+            float endlessSurvivalMaximum,
+            float endlessSurvivalInitial,
+            float endlessSurvivalPerLeaf,
+            float endlessSurvivalBaseDrain,
+            float endlessSurvivalStageSeconds,
+            float endlessSurvivalStageMultiplier)
         {
             Id = id;
             InitialLeafCount = initialLeafCount;
@@ -989,6 +1073,12 @@ public static class LevelPrefabMigration
             EndlessSpawnBatch = endlessSpawnBatch;
             EndlessSpawnInterval = endlessSpawnInterval;
             EndlessMaxLeaves = endlessMaxLeaves;
+            EndlessSurvivalMaximum = endlessSurvivalMaximum;
+            EndlessSurvivalInitial = endlessSurvivalInitial;
+            EndlessSurvivalPerLeaf = endlessSurvivalPerLeaf;
+            EndlessSurvivalBaseDrain = endlessSurvivalBaseDrain;
+            EndlessSurvivalStageSeconds = endlessSurvivalStageSeconds;
+            EndlessSurvivalStageMultiplier = endlessSurvivalStageMultiplier;
         }
     }
 

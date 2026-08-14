@@ -45,8 +45,8 @@ public class SettingsUI : UIBase
         labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
 
         Slider slider = CreateVolumeSlider(cardRoot);
-        slider.value = AudioListener.volume;
-        slider.onValueChanged.AddListener(value => AudioListener.volume = value);
+        slider.value = GameAudioManager.MasterVolume;
+        slider.onValueChanged.AddListener(GameAudioManager.SetMasterVolume);
 
         Button resumeButton = CreateImageButton(cardRoot, "Resume", "", new Vector2(0.5f, 0.44f), new Vector2(88f, 88f),
             () => onResume?.Invoke(), "ggj/暂停/btn_继续.png");

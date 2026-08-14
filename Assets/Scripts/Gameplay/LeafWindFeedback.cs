@@ -57,6 +57,13 @@ public sealed class LeafWindFeedback : MonoBehaviour
         enabled = true;
     }
 
+    public void ResetFeedback()
+    {
+        EnsureReferences();
+        ResetPose();
+        enabled = false;
+    }
+
     private void Update()
     {
         elapsed += Time.deltaTime;

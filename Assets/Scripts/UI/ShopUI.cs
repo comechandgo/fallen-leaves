@@ -18,11 +18,19 @@ public class ShopUI : UIBase
     private const string SurfaceFormPath = "ggj/道具强化/wind_form_surface.png";
     private const string TornadoFormPath = "ggj/道具强化/wind_form_tornado.png";
 
+    private static readonly Vector2 FormButtonSize = new Vector2(235f, 48f);
+    private static readonly Vector2 DownburstFormButtonSize = new Vector2(260f, 54f);
+
+    private static readonly Color UpgradeButtonColor = new Color(0.82f, 0.73f, 0.56f);
+    private static readonly Color UpgradeButtonDisabledColor = new Color(0.72f, 0.70f, 0.64f, 0.70f);
+    private static readonly Color DownburstFormButtonColor = new Color(0.74f, 0.62f, 0.42f);
+    private static readonly Color DownburstFormButtonDisabledColor = new Color(0.66f, 0.58f, 0.44f, 0.70f);
     private static readonly Color PriceColor = new Color(0.45f, 0.30f, 0.14f);
-    private static readonly Color PriceDisabledColor = new Color(0.45f, 0.30f, 0.14f, 0.45f);
+    private static readonly Color PriceDisabledColor = new Color(0.45f, 0.30f, 0.14f, 0.70f);
     private static readonly Color BadgeColor = new Color(0.62f, 0.39f, 0.16f);
 
     private System.Action<UpgradeKind> onBuy;
+    private System.Action onBuyForm;
     private System.Action onClose;
     private System.Func<UpgradeKind, string> titleProvider;
     private System.Func<UpgradeKind, string> infoProvider;
@@ -32,7 +40,8 @@ public class ShopUI : UIBase
     private System.Func<string> coinProvider;
     private System.Func<string> headerProvider;
     private System.Func<string> formProvider;
-    private System.Func<bool> canCloseProvider;
+    private System.Func<string> formPurchaseProvider;
+    private System.Func<bool> canBuyFormProvider;
 
     private readonly Text[] titleLabels = new Text[UpgradeCatalog.All.Length];
     private readonly Text[] infoLabels = new Text[UpgradeCatalog.All.Length];
@@ -44,12 +53,14 @@ public class ShopUI : UIBase
     private Text coinLabel;
     private Text windNameLabel;
     private Text formLabel;
+    private Text formBuyLabel;
     private Image formImage;
-    private Button closeButton;
+    private Button formBuyButton;
     private string currentFormImagePath;
 
     public void Bind(
         System.Action<UpgradeKind> onBuy,
+        System.Action onBuyForm,
         System.Action onClose,
         System.Func<UpgradeKind, string> titleProvider,
         System.Func<UpgradeKind, string> infoProvider,
@@ -59,9 +70,11 @@ public class ShopUI : UIBase
         System.Func<string> coinProvider,
         System.Func<string> headerProvider,
         System.Func<string> formProvider,
-        System.Func<bool> canCloseProvider)
+        System.Func<string> formPurchaseProvider,
+        System.Func<bool> canBuyFormProvider)
     {
         this.onBuy = onBuy;
+        this.onBuyForm = onBuyForm;
         this.onClose = onClose;
         this.titleProvider = titleProvider;
         this.infoProvider = infoProvider;
@@ -71,7 +84,8 @@ public class ShopUI : UIBase
         this.coinProvider = coinProvider;
         this.headerProvider = headerProvider;
         this.formProvider = formProvider;
-        this.canCloseProvider = canCloseProvider;
+        this.formPurchaseProvider = formPurchaseProvider;
+        this.canBuyFormProvider = canBuyFormProvider;
     }
 
     protected override void Build()
@@ -79,13 +93,7 @@ public class ShopUI : UIBase
         FrostedBackdrop backdrop = CreateFrostedBackdrop(transform);
         Button blankClose = backdrop.gameObject.AddComponent<Button>();
         blankClose.transition = Selectable.Transition.None;
-        blankClose.onClick.AddListener(() =>
-        {
-            if (canCloseProvider == null || canCloseProvider())
-            {
-                onClose?.Invoke();
-            }
-        });
+        blankClose.onClick.AddListener(() => onClose?.Invoke());
 
         RectTransform safe = CreateSafeArea(transform);
         Image panel = CreateImage(safe, "UpgradePanel", "ggj/道具强化/弹窗.png", new Vector2(0.5f, 0.52f), new Vector2(1260f, 640f), false);
@@ -114,8 +122,22 @@ public class ShopUI : UIBase
         formTitleRect.anchorMax = new Vector2(0.265f, 0.80f);
         formTitleRect.offsetMin = formTitleRect.offsetMax = Vector2.zero;
 
+        formBuyButton = CreateImageButton(
+            panelRoot,
+            "BuyWindForm",
+            "",
+            new Vector2(0.16f, 0.13f),
+            FormButtonSize,
+            () => onBuyForm?.Invoke(),
+            BuyNormalSpritePath,
+            BuyHoverSpritePath,
+            BuyPressedSpritePath);
+        formBuyLabel = CreateText(formBuyButton.transform, "升级为面风 50", 18, TextAnchor.MiddleCenter, PriceColor);
+        formBuyLabel.raycastTarget = false;
+        Stretch(formBuyLabel.rectTransform);
+
         CreateCoinBadge(panelRoot);
-        closeButton = CreateImageButton(panelRoot, "Close", "", new Vector2(0.91f, 0.86f), new Vector2(82f, 47f),
+        CreateImageButton(panelRoot, "Close", "", new Vector2(0.91f, 0.86f), new Vector2(82f, 47f),
             () => onClose?.Invoke(), "ggj/道具强化/返回正常.png", null, "ggj/道具强化/返回按下.png");
 
         float[] cardX = { 0.39f, 0.61f, 0.83f };
@@ -211,7 +233,7 @@ public class ShopUI : UIBase
         UpdateText(windNameLabel, headerProvider);
         UpdateText(formLabel, formProvider);
         UpdateFormImage();
-        UpdateCloseButton();
+        UpdateFormPurchaseButton();
 
         for (int i = 0; i < UpgradeCatalog.All.Length; i++)
         {
@@ -241,7 +263,7 @@ public class ShopUI : UIBase
                 priceLabels[i].text = price;
             }
 
-            bool showCoin = price != "选择" && price != "MAX";
+            bool showCoin = price != "MAX";
             if (buyGoldIcons[i] != null)
             {
                 buyGoldIcons[i].enabled = showCoin;
@@ -259,15 +281,32 @@ public class ShopUI : UIBase
         }
     }
 
-    private void UpdateCloseButton()
+    private void UpdateFormPurchaseButton()
     {
-        if (closeButton == null || canCloseProvider == null) return;
+        UpdateText(formBuyLabel, formPurchaseProvider);
+        if (formBuyButton == null || canBuyFormProvider == null) return;
 
-        bool canClose = canCloseProvider();
-        closeButton.interactable = canClose;
-        if (closeButton.targetGraphic != null)
+        bool isDownburst = formProvider != null && IsDownburstForm(formProvider());
+        bool canBuy = canBuyFormProvider();
+        formBuyButton.interactable = canBuy;
+
+        RectTransform buttonRect = formBuyButton.GetComponent<RectTransform>();
+        Vector2 targetSize = isDownburst ? DownburstFormButtonSize : FormButtonSize;
+        if (buttonRect != null && buttonRect.sizeDelta != targetSize)
         {
-            closeButton.targetGraphic.color = canClose ? Color.white : Theme.ButtonImageDisabled;
+            buttonRect.sizeDelta = targetSize;
+        }
+
+        if (formBuyButton.targetGraphic != null)
+        {
+            formBuyButton.targetGraphic.color = isDownburst
+                ? (canBuy ? DownburstFormButtonColor : DownburstFormButtonDisabledColor)
+                : (canBuy ? UpgradeButtonColor : UpgradeButtonDisabledColor);
+        }
+
+        if (formBuyLabel != null)
+        {
+            formBuyLabel.color = canBuy ? PriceColor : PriceDisabledColor;
         }
     }
 
@@ -279,7 +318,9 @@ public class ShopUI : UIBase
         buyButtons[index].interactable = canBuy;
         if (buyButtons[index].targetGraphic != null)
         {
-            buyButtons[index].targetGraphic.color = canBuy ? Color.white : Theme.ButtonImageDisabled;
+            buyButtons[index].targetGraphic.color = canBuy
+                ? UpgradeButtonColor
+                : UpgradeButtonDisabledColor;
         }
         if (priceLabels[index] != null)
         {
@@ -326,5 +367,10 @@ public class ShopUI : UIBase
         }
 
         return DownburstFormPath;
+    }
+
+    private static bool IsDownburstForm(string formText)
+    {
+        return !string.IsNullOrEmpty(formText) && formText.Contains("下沉风");
     }
 }

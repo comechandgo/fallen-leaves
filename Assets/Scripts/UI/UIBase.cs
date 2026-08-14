@@ -113,6 +113,7 @@ public abstract class UIBase : MonoBehaviour
         colors.fadeDuration     = 0.12f;
         btn.colors = colors;
 
+        btn.onClick.AddListener(GameAudioManager.PlayButtonClick);
         if (onClick != null) btn.onClick.AddListener(onClick);
 
         Text txt = CreateText(go.transform, label, 22, TextAnchor.MiddleCenter, Theme.ButtonText);
@@ -206,6 +207,7 @@ public abstract class UIBase : MonoBehaviour
             };
         }
 
+        button.onClick.AddListener(GameAudioManager.PlayButtonClick);
         if (onClick != null) button.onClick.AddListener(onClick);
 
         if (!string.IsNullOrEmpty(label))

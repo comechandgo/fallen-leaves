@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -7,13 +6,16 @@ using UnityEngine.UI;
 // 自身不再画 UI（R1：所有 UI 走 UIBase / UGUI）。
 public class GameFlowManager : MonoBehaviour
 {
-    public enum GameState { MainMenu, LevelSelect, Playing, Result }
+    public enum GameState { MainMenu, LevelSelect, Playing, EndlessFailure, Result }
+
+    private const float EndlessFailureDelay = 1f;
 
     private GameState state = GameState.MainMenu;
     private LevelId selectedLevel = LevelId.SimpleSmall;
 
     private float elapsedTime;
     private float timeLimitSeconds;
+    private float endlessFailureElapsed;
     private bool resultSucceeded = true;
 
     // R3：shopOpen / settingsOpen 唯一来源。HUD/Shop/Settings 都从这里读。
@@ -21,13 +23,9 @@ public class GameFlowManager : MonoBehaviour
     public bool SettingsOpen { get; private set; }
 
     private readonly int[] upgradeLevels = new int[UpgradeCatalog.All.Length];
-    private readonly List<UpgradeKind> inheritanceChoices = new List<UpgradeKind>(3);
 
     private WindForm currentWindForm = WindForm.Downburst;
-    private WindForm pendingWindForm = WindForm.Downburst;
-    private UpgradeKind? currentInheritance;
-    private float windMomentum;
-    private bool choosingInheritance;
+    private UpgradeInheritance inheritedUpgrades = UpgradeInheritance.None;
 
     private WindBlower windBlower;
 
@@ -80,10 +78,15 @@ public class GameFlowManager : MonoBehaviour
             () => ToggleSettings(),
             () => ToggleShop(),
             () => FormatCoins(RiverCollector.CoinCount),
-            () => FormatHudTime());
+            () => FormatHudTime(),
+            () => selectedLevel == LevelId.TimedChallenge,
+            () => selectedLevel == LevelId.Endless,
+            () => LevelLoader.Current != null ? LevelLoader.Current.EndlessSurvivalRatio : 0f,
+            () => state == GameState.EndlessFailure);
         shop.Bind(
-            kind => HandleShopCard(kind),
-            () => TryCloseShop(),
+            kind => TryBuyUpgrade(kind),
+            () => TryBuyNextWindForm(),
+            () => CloseShop(),
             kind => BuildUpgradeTitle(kind),
             kind => BuildUpgradeInfo(kind),
             kind => CanUseShopCard(kind),
@@ -92,7 +95,8 @@ public class GameFlowManager : MonoBehaviour
             () => FormatCoins(RiverCollector.CoinCount),
             () => BuildShopHeader(),
             () => BuildShopFormLabel(),
-            () => !choosingInheritance);
+            () => BuildFormPurchaseLabel(),
+            () => CanBuyNextWindForm());
         settings.Bind(
             () => CloseSettings(),
             () => ReturnToLevelSelect(),
@@ -105,6 +109,9 @@ public class GameFlowManager : MonoBehaviour
             () => FormatTime(elapsedTime),
             () => FormatCoins(RiverCollector.SessionCoins),
             () => FormatCoins(RiverCollector.CoinCount),
+            () => RiverCollector.SessionLeafCount.ToString(),
+            () => selectedLevel == LevelId.TimedChallenge,
+            () => selectedLevel == LevelId.Endless,
             () => resultSucceeded);
 
         router.Register(mainMenu, levelSelect, hud, result);
@@ -156,13 +163,21 @@ public class GameFlowManager : MonoBehaviour
             if (!uiPaused)
             {
                 float deltaTime = Time.unscaledDeltaTime;
-                elapsedTime += deltaTime;
                 LevelLoader.Tick(deltaTime);
-                TickWindFormUnlock();
+                if (LevelLoader.IsReady) elapsedTime += deltaTime;
             }
 
-            if (LevelLoader.IsGameplayClear()) EndGame(true);
-            else if (IsTimedChallengeFailed()) EndGame(false);
+            if (LevelLoader.IsReady)
+            {
+                if (LevelLoader.IsGameplayClear()) EndGame(true);
+                else if (IsTimedChallengeFailed()) EndGame(false);
+                else if (IsEndlessChallengeFailed()) BeginEndlessFailure();
+            }
+        }
+        else if (state == GameState.EndlessFailure)
+        {
+            Time.timeScale = 0f;
+            AdvanceEndlessFailure(Time.unscaledDeltaTime);
         }
         else
         {
@@ -183,16 +198,8 @@ public class GameFlowManager : MonoBehaviour
         settings.Hide();
     }
 
-    private void TryCloseShop()
-    {
-        if (choosingInheritance) return;
-        CloseShop();
-    }
-
     private void CloseShop()
     {
-        if (choosingInheritance) return;
-
         ShopOpen = false;
         shop.Hide();
     }
@@ -208,7 +215,7 @@ public class GameFlowManager : MonoBehaviour
 
     private void ToggleShop()
     {
-        if (state != GameState.Playing || choosingInheritance) return;
+        if (state != GameState.Playing) return;
 
         ShopOpen = !ShopOpen;
         if (ShopOpen)
@@ -241,18 +248,11 @@ public class GameFlowManager : MonoBehaviour
 
     private string BuildUpgradeTitle(UpgradeKind kind)
     {
-        return choosingInheritance
-            ? "继承" + UpgradeCatalog.GetName(kind)
-            : UpgradeCatalog.GetName(kind);
+        return UpgradeCatalog.GetName(kind);
     }
 
     private string BuildUpgradeInfo(UpgradeKind kind)
     {
-        if (choosingInheritance)
-        {
-            return BuildInheritanceInfo(kind);
-        }
-
         int level = upgradeLevels[(int)kind];
         string current = UpgradeCatalog.GetValueText(currentWindForm, kind, level);
 
@@ -266,25 +266,8 @@ public class GameFlowManager : MonoBehaviour
         return "当前：" + current + "\n下级：" + nextName + " " + next;
     }
 
-    private string BuildInheritanceInfo(UpgradeKind kind)
-    {
-        switch (kind)
-        {
-            case UpgradeKind.WindPower:
-                return "新形态基础风力 +15%";
-            case UpgradeKind.WindArea:
-                return "新形态基础尺寸 +12%";
-            case UpgradeKind.WindPulse:
-                return "新形态基础风载 +20%";
-            default:
-                return "";
-        }
-    }
-
     private string BuildUpgradePrice(UpgradeKind kind)
     {
-        if (choosingInheritance) return "选择";
-
         int level = upgradeLevels[(int)kind];
         if (UpgradeCatalog.IsMaxLevel(kind, level)) return "MAX";
 
@@ -293,22 +276,12 @@ public class GameFlowManager : MonoBehaviour
 
     private string BuildUpgradeLevel(UpgradeKind kind)
     {
-        if (choosingInheritance)
-        {
-            return inheritanceChoices.Contains(kind) ? "可继承" : "不可选";
-        }
-
         int level = upgradeLevels[(int)kind];
         return level + "/2";
     }
 
     private bool CanUseShopCard(UpgradeKind kind)
     {
-        if (choosingInheritance)
-        {
-            return inheritanceChoices.Contains(kind);
-        }
-
         int level = upgradeLevels[(int)kind];
         return !UpgradeCatalog.IsMaxLevel(kind, level)
             && RiverCollector.CoinCount >= UpgradeCatalog.GetNextCost(currentWindForm, kind, level);
@@ -316,16 +289,30 @@ public class GameFlowManager : MonoBehaviour
 
     private string BuildShopHeader()
     {
-        return choosingInheritance
-            ? "选择继承强化 → " + UpgradeCatalog.GetFormName(pendingWindForm)
-            : UpgradeCatalog.GetWindName(currentWindForm, upgradeLevels);
+        return UpgradeCatalog.GetWindName(currentWindForm, upgradeLevels);
     }
 
     private string BuildShopFormLabel()
     {
-        return choosingInheritance
-            ? "形态升级 " + UpgradeCatalog.GetFormName(pendingWindForm)
-            : UpgradeCatalog.GetFormName(currentWindForm);
+        return UpgradeCatalog.GetFormName(currentWindForm);
+    }
+
+    private string BuildFormPurchaseLabel()
+    {
+        if (!UpgradeCatalog.TryGetNextForm(currentWindForm, out WindForm nextForm))
+        {
+            return "已达最终形态";
+        }
+
+        return "升级为" + UpgradeCatalog.GetFormName(nextForm) + " "
+            + UpgradeCatalog.GetFormCost(nextForm);
+    }
+
+    private bool CanBuyNextWindForm()
+    {
+        if (state != GameState.Playing) return false;
+        return UpgradeCatalog.TryGetNextForm(currentWindForm, out WindForm nextForm)
+            && RiverCollector.CoinCount >= UpgradeCatalog.GetFormCost(nextForm);
     }
 
     private void StartLevel(LevelId levelId)
@@ -335,7 +322,7 @@ public class GameFlowManager : MonoBehaviour
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
 
-        RiverCollector.ResetSession();
+        RiverCollector.ResetRun();
         ResetWindRunState();
         SetWindBlower(null);
 
@@ -352,6 +339,7 @@ public class GameFlowManager : MonoBehaviour
         SetWindBlower(loadedLevel.WindBlower);
         ApplyRuntimeUpgrades();
         elapsedTime = 0f;
+        endlessFailureElapsed = 0f;
         resultSucceeded = true;
 
         state = GameState.Playing;
@@ -369,6 +357,32 @@ public class GameFlowManager : MonoBehaviour
         router.Show(UIRouter.State.Result);
     }
 
+    private void BeginEndlessFailure()
+    {
+        if (state != GameState.Playing || selectedLevel != LevelId.Endless) return;
+
+        Time.timeScale = 0f;
+        ShopOpen = false;
+        SettingsOpen = false;
+        shop.Hide();
+        settings.Hide();
+        endlessFailureElapsed = 0f;
+        resultSucceeded = false;
+
+        WindBlower current = GetWindBlower();
+        if (current != null) current.enabled = false;
+
+        state = GameState.EndlessFailure;
+    }
+
+    private void AdvanceEndlessFailure(float unscaledDeltaTime)
+    {
+        if (state != GameState.EndlessFailure) return;
+
+        endlessFailureElapsed += Mathf.Max(0f, unscaledDeltaTime);
+        if (endlessFailureElapsed >= EndlessFailureDelay) EndGame(false);
+    }
+
     private void ReturnToLevelSelect()
     {
         Time.timeScale = 1f;
@@ -378,6 +392,7 @@ public class GameFlowManager : MonoBehaviour
         LevelLoader.Unload();
         windBlower = null;
         timeLimitSeconds = 0f;
+        endlessFailureElapsed = 0f;
         resultSucceeded = true;
         state = GameState.LevelSelect;
         router.Show(UIRouter.State.LevelSelect);
@@ -392,20 +407,10 @@ public class GameFlowManager : MonoBehaviour
         LevelLoader.Unload();
         windBlower = null;
         timeLimitSeconds = 0f;
+        endlessFailureElapsed = 0f;
         resultSucceeded = true;
         state = GameState.MainMenu;
         router.Show(UIRouter.State.MainMenu);
-    }
-
-    private void HandleShopCard(UpgradeKind kind)
-    {
-        if (choosingInheritance)
-        {
-            ConfirmInheritance(kind);
-            return;
-        }
-
-        TryBuyUpgrade(kind);
     }
 
     private void TryBuyUpgrade(UpgradeKind kind)
@@ -429,7 +434,7 @@ public class GameFlowManager : MonoBehaviour
         WindRuntimeValues values = UpgradeCatalog.GetRuntimeValues(
             currentWindForm,
             upgradeLevels,
-            currentInheritance);
+            inheritedUpgrades);
 
         b.ApplyUpgradeValues(values);
     }
@@ -447,25 +452,7 @@ public class GameFlowManager : MonoBehaviour
 
     private void SetWindBlower(WindBlower blower)
     {
-        if (windBlower != null)
-        {
-            windBlower.OnTargetsPushed -= HandleWindTargetsPushed;
-        }
-
         windBlower = blower;
-
-        if (windBlower != null)
-        {
-            windBlower.OnTargetsPushed += HandleWindTargetsPushed;
-        }
-    }
-
-    private void HandleWindTargetsPushed(WindBlowResult result)
-    {
-        windMomentum += Mathf.Max(0, result.PushedCount)
-            * Mathf.Max(0f, result.Power)
-            * Mathf.Clamp(result.Interval, 0.08f, 0.5f)
-            * 10f;
     }
 
     private static string FormatTime(float seconds)
@@ -488,100 +475,45 @@ public class GameFlowManager : MonoBehaviour
     private void ResetWindRunState()
     {
         currentWindForm = WindForm.Downburst;
-        pendingWindForm = WindForm.Downburst;
-        currentInheritance = null;
-        windMomentum = 0f;
-        choosingInheritance = false;
-        inheritanceChoices.Clear();
+        inheritedUpgrades = UpgradeInheritance.None;
         System.Array.Clear(upgradeLevels, 0, upgradeLevels.Length);
     }
 
-    private void TickWindFormUnlock()
+    private void TryBuyNextWindForm()
     {
-        if (choosingInheritance) return;
+        if (state != GameState.Playing) return;
 
         if (!UpgradeCatalog.TryGetNextForm(currentWindForm, out WindForm nextForm))
         {
             return;
         }
 
-        bool reachedMomentum = windMomentum >= UpgradeCatalog.GetWindMomentumTarget(nextForm);
-        bool reachedFallback = elapsedTime >= UpgradeCatalog.GetFallbackUnlockSeconds(nextForm);
+        int cost = UpgradeCatalog.GetFormCost(nextForm);
+        if (!RiverCollector.TrySpendCoins(cost)) return;
 
-        if (!reachedMomentum && !reachedFallback)
-        {
-            return;
-        }
-
-        BeginWindFormAdvance(nextForm);
+        ApplyWindFormAdvance(nextForm);
     }
 
-    private void BeginWindFormAdvance(WindForm nextForm)
+    private void ApplyWindFormAdvance(WindForm nextForm)
     {
-        pendingWindForm = nextForm;
-        BuildInheritanceChoices();
-
-        if (inheritanceChoices.Count == 1)
-        {
-            ApplyWindFormAdvance(nextForm, inheritanceChoices[0]);
-            return;
-        }
-
-        choosingInheritance = true;
-        ShopOpen = true;
-
-        if (SettingsOpen)
-        {
-            SettingsOpen = false;
-            settings.Hide();
-        }
-
-        shop.Show();
-    }
-
-    private void BuildInheritanceChoices()
-    {
-        inheritanceChoices.Clear();
-
-        int highest = -1;
         for (int i = 0; i < UpgradeCatalog.All.Length; i++)
         {
             UpgradeKind kind = UpgradeCatalog.All[i];
-            int level = upgradeLevels[(int)kind];
-
-            if (level > highest)
+            if (upgradeLevels[(int)kind] > 0)
             {
-                highest = level;
-                inheritanceChoices.Clear();
-                inheritanceChoices.Add(kind);
-            }
-            else if (level == highest)
-            {
-                inheritanceChoices.Add(kind);
+                inheritedUpgrades |= GetInheritanceFlag(kind);
             }
         }
-    }
 
-    private void ConfirmInheritance(UpgradeKind kind)
-    {
-        if (!inheritanceChoices.Contains(kind)) return;
-
-        ApplyWindFormAdvance(pendingWindForm, kind);
-    }
-
-    private void ApplyWindFormAdvance(WindForm nextForm, UpgradeKind inheritance)
-    {
         currentWindForm = nextForm;
-        currentInheritance = inheritance;
-        windMomentum = 0f;
-        choosingInheritance = false;
-        inheritanceChoices.Clear();
         System.Array.Clear(upgradeLevels, 0, upgradeLevels.Length);
 
-        ShopOpen = false;
-        shop.Hide();
-
         ApplyRuntimeUpgrades();
+    }
+
+    private static UpgradeInheritance GetInheritanceFlag(UpgradeKind kind)
+    {
+        return (UpgradeInheritance)(1 << (int)kind);
     }
 
     private bool IsTimedChallengeFailed()
@@ -589,6 +521,14 @@ public class GameFlowManager : MonoBehaviour
         return state == GameState.Playing
             && timeLimitSeconds > 0f
             && elapsedTime >= timeLimitSeconds;
+    }
+
+    private bool IsEndlessChallengeFailed()
+    {
+        return state == GameState.Playing
+            && selectedLevel == LevelId.Endless
+            && LevelLoader.Current != null
+            && LevelLoader.Current.IsEndlessSurvivalDepleted;
     }
 
     private static string FormatCoins(float coins)

@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 public static class LevelPrefabVisualCapture
 {
-    private const string LevelPath = "Assets/Prefabs/Levels/Level_ClassicLarge.prefab";
+    private const string LevelPath = "Assets/Prefabs/Levels/Level_SimpleSmall.prefab";
 
     [MenuItem("Tools/Fallen Leaves/Capture Level Prefab Overview")]
     public static void RunMenu()

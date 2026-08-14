@@ -6,10 +6,13 @@ public sealed class LeafLifecycle : MonoBehaviour
     private LeafSpawner owner;
     private bool registered;
 
-    public void Bind(LeafSpawner spawner)
+    public bool SpawnedNearTree { get; private set; }
+
+    public void Bind(LeafSpawner spawner, bool spawnedNearTree = false)
     {
         if (registered) Unregister();
         owner = spawner;
+        SpawnedNearTree = spawnedNearTree;
         registered = owner != null;
         if (registered) owner.Register(this);
     }
@@ -17,6 +20,21 @@ public sealed class LeafLifecycle : MonoBehaviour
     public void MarkCollected()
     {
         Unregister();
+    }
+
+    public void Recycle()
+    {
+        LeafSpawner previousOwner = owner;
+        Unregister();
+
+        if (previousOwner != null)
+        {
+            previousOwner.ReturnToPool(this);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     private void OnDestroy()

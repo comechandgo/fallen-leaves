@@ -2,11 +2,14 @@ using UnityEngine;
 
 public class RiverCollector : MonoBehaviour
 {
+    public static event System.Action<float> CoinsGained;
+    public static event System.Action<int> LeavesCollected;
+
     public static float CoinCount { get; private set; }
     public static float SessionCoins { get; private set; }
+    public static int SessionLeafCount { get; private set; }
 
     public int CollectedCount { get; private set; }
-    private static float leafValue = 1f;
     [SerializeField] private RiverWaterMask waterMask;
     [SerializeField, Min(0f)] private float collectorMargin;
 
@@ -27,19 +30,19 @@ public class RiverCollector : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetCoins()
     {
+        CoinsGained = null;
+        LeavesCollected = null;
         CoinCount = 0;
         SessionCoins = 0;
-        leafValue = 1f;
+        SessionLeafCount = 0;
     }
 
-    public static void ResetSession()
+    /// <summary>清空一局内的可消费金币与累计获得金币。</summary>
+    public static void ResetRun()
     {
+        CoinCount = 0;
         SessionCoins = 0;
-    }
-
-    public static void SetLeafValue(float value)
-    {
-        leafValue = Mathf.Max(0f, value);
+        SessionLeafCount = 0;
     }
 
     public static bool TrySpendCoins(float amount)
@@ -82,13 +85,17 @@ public class RiverCollector : MonoBehaviour
         }
 
         CollectedCount++;
-        CoinCount += leafValue;
-        SessionCoins += leafValue;
+        CoinCount += 1f;
+        SessionCoins += 1f;
+        SessionLeafCount++;
+        LeavesCollected?.Invoke(1);
+        CoinsGained?.Invoke(1f);
 
         LeafLifecycle lifecycle = windable.GetComponent<LeafLifecycle>();
         if (lifecycle != null)
         {
-            lifecycle.MarkCollected();
+            lifecycle.Recycle();
+            return;
         }
 
         Destroy(windable.gameObject);

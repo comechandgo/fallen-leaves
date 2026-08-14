@@ -44,6 +44,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43bac373e0ecefd4cb13b7bd23c68e7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  windShape: 0
+  surfaceLength: 18
+  surfaceStartWidth: 6
+  surfaceEndWidth: 10
+  minDragDistance: 0.05
   radius: 2
   innerRatio: 0.2
   middleRatio: 0.5
@@ -56,4 +61,7 @@ MonoBehaviour:
   maxTargetsPerBlow: 10
   baseWind: 1
   speedScale: 6
-  showWindRings: 1
+  surfaceLiftRatio: 0.32
+  tornadoInwardRatio: 0.55
+  tornadoSpinRatio: 1
+  windEffectInterval: 0.16

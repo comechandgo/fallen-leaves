@@ -3,8 +3,8 @@
 ## 地图资源关系
 
 - `map_120x90_v1.tmj` 是首版地图的唯一布局数据源，PNG/SVG 只用于对照。
-- `Assets/Prefabs/Levels` 下的四个 `Level_*.prefab` 是彼此独立的地图副本；修改其中一个不会同步到另外三个。
-- 四种模式当前地图相同，但树叶数量、限时和无尽参数仍各自保存在对应的 `LevelRoot` 中。
+- `Assets/Prefabs/Levels` 下的三个 `Level_*.prefab` 是彼此独立的地图副本；修改其中一个不会同步到另外两个。
+- 三种模式当前地图相同，但树叶数量、限时和无尽参数仍各自保存在对应的 `LevelRoot` 中。
 - 不要重新添加 `RiverPath2D`、LineRenderer 河流或固定 `LeafSpawnArea`。
 
 ## 日常人工调整
@@ -13,7 +13,7 @@
 2. 双击需要修改的 `Level_*.prefab` 进入 Prefab Mode。
 3. 展开以下分组：
    - `GroundGrid`：黄绿混合地面。
-   - `Water/MainRiver_ImagePieces`：六段河流图片。
+   - `Water/MainRiver_Whole`：单张整河图片、真实水色遮罩与动态水流。
    - `Water/Lake_SouthWetlandLake`：湖泊判定和 `Pond_01` 外观。
    - `Obstacles`：有物理/生成排除判定的物件。
    - `Decorations`、`Landmarks`：默认不阻挡的人工摆放物件。
@@ -22,11 +22,11 @@
 
 ## 调整河流图片
 
-- 每段河流都是 `RiverArt_01/02/03` 的预制体实例，可移动、旋转和等比缩放。
-- 选中河流段后，Scene 视图中的青色圆点是入口，橙色圆点是出口。
-- 同时选择两段或更多同级河流段，在 Inspector 点击 `Snap Selected Pieces As Sibling Chain`，会按 Hierarchy 顺序把后一段入口吸附到前一段出口。
-- 点击 `Scan Entry / Exit From Water Pixels` 可从源图水色重新计算入口、出口和原始水宽。
-- 调整时保持 X/Y 缩放一致，不要镜像。相邻段建议保留约 0.75 米重叠，以利用 `RiverSoftBlend` 材质消除接缝。
+- `Water/MainRiver_Whole` 是 `MainRiverWhole.prefab` 的唯一整河实例，可移动、旋转和等比缩放。
+- 选中整河后，Scene 视图中的青色圆点是入口，橙色圆点是出口；两点应分别与 TMJ 路线首尾重合。
+- 点击 `Scan Entry / Exit From Water Pixels` 可从整河源图的蓝色水域重新计算入口、出口和原始水宽。
+- 调整时保持 X/Y 缩放一致，不要镜像。动态水纹会读取 Level 根对象的 `MapPrototypeGizmos` 折线路线并平滑转向。
+- `RiverArt_01/02/03` 和旧分段 Prefab 仅用于回退，不要实例化到当前三个关卡中。
 - 图片上的水色遮罩同时控制树叶收集与随机生成排除区域；不要移除 `RiverWaterMask`、`RiverCollector` 或碰撞体。
 
 ## 调整黄绿地面
@@ -57,10 +57,10 @@
 
 - `Tools > Fallen Leaves > Import Map Prototype`
   - 校验 TMJ、基础图片和 Catalog。
-  - 已存在的四个关卡全部跳过，不覆盖人工布局。
-- `Tools > Fallen Leaves > Force Rebuild Four Levels From TMJ`
-  - 覆盖四个关卡预制体，恢复为 TMJ 的首版布局。
-  - 使用前先创建 Git 提交或备份；该操作会丢失四关的人工摆放调整。
+  - 已存在的三个关卡全部跳过，不覆盖人工布局。
+- `Tools > Fallen Leaves > Force Rebuild Three Levels From TMJ`
+  - 覆盖三个关卡预制体，恢复为 TMJ 的首版布局。
+  - 使用前先创建 Git 提交或备份；该操作会丢失三关的人工摆放调整。
 - 批处理前必须关闭所有打开该项目的 Unity 编辑器窗口。
 - `Tools > Fallen Leaves > Capture Level Prefab Overview` 会把全图预览输出到项目同级 `logs/level-prefab-overview.png`。
 

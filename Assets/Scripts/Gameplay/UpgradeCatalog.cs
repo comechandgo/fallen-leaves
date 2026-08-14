@@ -7,6 +7,15 @@ public enum UpgradeKind
     WindPulse
 }
 
+[System.Flags]
+public enum UpgradeInheritance
+{
+    None = 0,
+    WindPower = 1 << 0,
+    WindArea = 1 << 1,
+    WindPulse = 1 << 2
+}
+
 public static class UpgradeCatalog
 {
     public static readonly UpgradeKind[] All =
@@ -50,10 +59,13 @@ public static class UpgradeCatalog
 
     private static readonly int[][] CostsByForm =
     {
-        new[] { 10, 35 },
-        new[] { 150, 550 },
-        new[] { 1500, 6000 }
+        new[] { 5, 15 },
+        new[] { 10, 30 },
+        new[] { 20, 60 }
     };
+
+    // 以“目标形态”为索引；初始下沉风不需要购买。
+    private static readonly int[] FormCosts = { 0, 50, 300 };
 
     private static readonly string[][][] StepNames =
     {
@@ -84,10 +96,6 @@ public static class UpgradeCatalog
     private const float SurfaceLiftRatio = 0.32f;
     private const float TornadoInwardRatio = 0.55f;
     private const float TornadoSpinRatio = 1.00f;
-
-    // 风势阈值按目标解锁时间配置：面风约 1:00，龙卷风约 3:35。
-    private static readonly float[] WindMomentumTargets = { 0f, 720f, 10500f };
-    private static readonly float[] FallbackUnlockSeconds = { 0f, 70f, 225f };
 
     public static string GetName(UpgradeKind kind)
     {
@@ -127,14 +135,10 @@ public static class UpgradeCatalog
         }
     }
 
-    public static float GetWindMomentumTarget(WindForm targetForm)
+    public static int GetFormCost(WindForm targetForm)
     {
-        return WindMomentumTargets[(int)targetForm];
-    }
-
-    public static float GetFallbackUnlockSeconds(WindForm targetForm)
-    {
-        return FallbackUnlockSeconds[(int)targetForm];
+        int index = (int)targetForm;
+        return index >= 0 && index < FormCosts.Length ? FormCosts[index] : 0;
     }
 
     public static int GetMaxLevel(UpgradeKind kind)
@@ -207,7 +211,7 @@ public static class UpgradeCatalog
         return GetValueText(form, kind, levelIndex + 1);
     }
 
-    public static WindRuntimeValues GetRuntimeValues(WindForm form, int[] levels, UpgradeKind? inheritance)
+    public static WindRuntimeValues GetRuntimeValues(WindForm form, int[] levels, UpgradeInheritance inheritance)
     {
         int formIndex = (int)form;
         int powerLevel = GetLevel(levels, UpgradeKind.WindPower);
@@ -258,32 +262,30 @@ public static class UpgradeCatalog
         }
     }
 
-    private static void ApplyInheritance(ref WindRuntimeValues values, UpgradeKind? inheritance)
+    private static void ApplyInheritance(ref WindRuntimeValues values, UpgradeInheritance inheritance)
     {
-        if (!inheritance.HasValue) return;
-
-        switch (inheritance.Value)
+        if ((inheritance & UpgradeInheritance.WindPower) != 0)
         {
-            case UpgradeKind.WindPower:
-                values.Power *= 1.15f;
-                break;
+            values.Power *= 1.15f;
+        }
 
-            case UpgradeKind.WindArea:
-                if (values.Shape == WindShape.Surface)
-                {
-                    values.Length *= 1.12f;
-                    values.StartWidth *= 1.12f;
-                    values.EndWidth *= 1.12f;
-                }
-                else
-                {
-                    values.Radius *= 1.12f;
-                }
-                break;
+        if ((inheritance & UpgradeInheritance.WindArea) != 0)
+        {
+            if (values.Shape == WindShape.Surface)
+            {
+                values.Length *= 1.12f;
+                values.StartWidth *= 1.12f;
+                values.EndWidth *= 1.12f;
+            }
+            else
+            {
+                values.Radius *= 1.12f;
+            }
+        }
 
-            case UpgradeKind.WindPulse:
-                values.MaxTargets = Mathf.RoundToInt(values.MaxTargets * 1.2f);
-                break;
+        if ((inheritance & UpgradeInheritance.WindPulse) != 0)
+        {
+            values.MaxTargets = Mathf.RoundToInt(values.MaxTargets * 1.2f);
         }
     }
 }

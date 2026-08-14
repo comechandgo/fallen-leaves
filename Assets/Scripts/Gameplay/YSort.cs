@@ -39,6 +39,13 @@ public class YSort : MonoBehaviour
         targetRenderer.sortingOrder = ComputeSortingOrder(transform.position.y, baseOrder, unitsPerOrder, heightOffset);
     }
 
+    public void SetDynamic(bool dynamicSort, bool applyImmediately = true)
+    {
+        updateEveryFrame = dynamicSort;
+        if (applyImmediately) ApplyNow();
+        enabled = dynamicSort;
+    }
+
     public static int ComputeSortingOrder(float worldY, int orderBase, float unit, float offset)
     {
         return orderBase + Mathf.RoundToInt((-worldY + offset) / Mathf.Max(0.001f, unit));

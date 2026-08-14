@@ -5,10 +5,21 @@ public static class GameBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        if (Object.FindFirstObjectByType<GameFlowManager>() != null) return;
+        GameFlowManager existingFlow = Object.FindFirstObjectByType<GameFlowManager>();
+        if (existingFlow != null)
+        {
+            if (Object.FindFirstObjectByType<GameAudioManager>() == null)
+            {
+                existingFlow.gameObject.AddComponent<GameAudioManager>();
+            }
+
+            return;
+        }
+
         CreateCamera();
         GameObject flow = new GameObject("GameFlowManager");
         Object.DontDestroyOnLoad(flow);
+        flow.AddComponent<GameAudioManager>();
         flow.AddComponent<GameFlowManager>();
     }
 

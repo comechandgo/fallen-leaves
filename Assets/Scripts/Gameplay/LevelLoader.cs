@@ -10,10 +10,12 @@ public static class LevelLoader
     public static LevelRoot Current => current;
     public static WindBlower CurrentWindBlower => current != null ? current.WindBlower : null;
     public static float CurrentTimeLimitSeconds => current != null ? current.TimeLimitSeconds : 0f;
+    public static bool IsReady => current != null && current.IsReady;
 
     public static LevelRoot Load(LevelId id)
     {
         Unload();
+        RiverCollector.ResetRun();
         ConfigurePhysics();
 
         if (catalog == null)
