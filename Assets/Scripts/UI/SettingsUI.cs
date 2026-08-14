@@ -12,6 +12,12 @@ public class SettingsUI : UIBase
     private GameObject levelButtonObject;
     private GameObject menuButtonObject;
 
+    private RectTransform volumeLabelRect;
+    private RectTransform volumeSliderRect;
+    private RectTransform resumeButtonRect;
+    private RectTransform levelButtonRect;
+    private RectTransform menuButtonRect;
+
     public void Bind(
         System.Action onResume,
         System.Action onLevelSelect,
@@ -39,25 +45,29 @@ public class SettingsUI : UIBase
         titleRect.offsetMin = titleRect.offsetMax = Vector2.zero;
 
         Text volumeLabel = CreateText(cardRoot, "音量", 20, TextAnchor.MiddleLeft, Theme.TextDark);
-        RectTransform labelRect = volumeLabel.rectTransform;
-        labelRect.anchorMin = new Vector2(0.18f, 0.56f);
-        labelRect.anchorMax = new Vector2(0.34f, 0.66f);
-        labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
+        volumeLabelRect = volumeLabel.rectTransform;
+        volumeLabelRect.anchorMin = new Vector2(0.12f, 0.68f);
+        volumeLabelRect.anchorMax = new Vector2(0.28f, 0.78f);
+        volumeLabelRect.offsetMin = volumeLabelRect.offsetMax = Vector2.zero;
 
         Slider slider = CreateVolumeSlider(cardRoot);
+        volumeSliderRect = slider.GetComponent<RectTransform>();
         slider.value = GameAudioManager.MasterVolume;
         slider.onValueChanged.AddListener(GameAudioManager.SetMasterVolume);
 
-        Button resumeButton = CreateImageButton(cardRoot, "Resume", "", new Vector2(0.5f, 0.44f), new Vector2(88f, 88f),
+        Button resumeButton = CreateImageButton(cardRoot, "Resume", "", new Vector2(0.72f, 0.40f), new Vector2(88f, 88f),
             () => onResume?.Invoke(), "ggj/暂停/btn_继续.png");
-        resumeButton.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
+        resumeButtonRect = resumeButton.GetComponent<RectTransform>();
+        resumeButtonRect.anchoredPosition = Vector2.zero;
 
-        Button levelButton = CreateImageButton(cardRoot, "LevelSelect", "", new Vector2(0.5f, 0.25f), new Vector2(205f, 70f),
+        Button levelButton = CreateImageButton(cardRoot, "LevelSelect", "", new Vector2(0.29f, 0.52f), new Vector2(205f, 70f),
             () => onLevelSelect?.Invoke(), "ggj/暂停/关卡选择正常.png", "ggj/暂停/关卡选择悬浮.png", "ggj/暂停/关卡选择按下.png");
+        levelButtonRect = levelButton.GetComponent<RectTransform>();
         levelButtonObject = levelButton.gameObject;
 
-        Button menuButton = CreateImageButton(cardRoot, "MainMenu", "", new Vector2(0.5f, 0.12f), new Vector2(205f, 70f),
+        Button menuButton = CreateImageButton(cardRoot, "MainMenu", "", new Vector2(0.29f, 0.26f), new Vector2(205f, 70f),
             () => onQuitToMenu?.Invoke(), "ggj/暂停/返回主界面正常.png", "ggj/暂停/返回主界面悬浮.png", "ggj/暂停/返回主界面按下.png");
+        menuButtonRect = menuButton.GetComponent<RectTransform>();
         menuButtonObject = menuButton.gameObject;
     }
 
@@ -66,8 +76,8 @@ public class SettingsUI : UIBase
         GameObject go = new GameObject("VolumeSlider", typeof(RectTransform), typeof(Slider));
         go.transform.SetParent(parent, false);
         RectTransform rect = go.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.36f, 0.57f);
-        rect.anchorMax = new Vector2(0.82f, 0.65f);
+        rect.anchorMin = new Vector2(0.29f, 0.69f);
+        rect.anchorMax = new Vector2(0.86f, 0.77f);
         rect.offsetMin = rect.offsetMax = Vector2.zero;
 
         Image background = CreateSliderImage(go.transform, "Background", Theme.PanelShadow);

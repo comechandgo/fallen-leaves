@@ -35,9 +35,9 @@ Material:
     m_Floats:
     - PixelSnap: 0
     - _EnableExternalAlpha: 0
-    - _InnerRadius: 35
+    - _InnerRadius: 45
     - _MinimumOpacity: 0.25
-    - _OuterRadius: 60
+    - _OuterRadius: 75
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _Flip: {r: 1, g: 1, b: 1, a: 1}

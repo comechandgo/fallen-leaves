@@ -22,6 +22,7 @@ public static class LevelPrefabRuntimeValidation
     private static int validationFrame;
     private static int stage;
     private static TiledMapPrototypeImporter.Layout prototype;
+    private static LevelRoot layoutReferencePrefab;
 
     static LevelPrefabRuntimeValidation()
     {
@@ -56,6 +57,7 @@ public static class LevelPrefabRuntimeValidation
         stage = 0;
         validationQueued = false;
         prototype = null;
+        layoutReferencePrefab = null;
         report.Add($"Fallen Leaves level prefab runtime validation - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         report.Add($"Unity: {Application.unityVersion}");
         report.Add(string.Empty);
@@ -136,6 +138,8 @@ public static class LevelPrefabRuntimeValidation
         SerializedProperty entries = new SerializedObject(catalog).FindProperty("entries");
         Check(entries != null && entries.arraySize == 3, "LevelCatalog contains exactly three modes");
         Check(catalog.GetPrefab((LevelId)1) == null, "Retired serialized LevelId 1 is not registered");
+        layoutReferencePrefab = catalog.GetPrefab(LevelId.SimpleSmall);
+        Check(layoutReferencePrefab != null, "Current SimpleSmall prefab is available as the authored map-layout reference");
 
         ValidateTreeCursorFadeAssets();
         ValidateLeafPrefab(catalog.GetPrefab(LevelId.SimpleSmall));
@@ -350,10 +354,13 @@ public static class LevelPrefabRuntimeValidation
                 && !mask.IntersectsCircle(nonWaterPoint, 0f),
                 $"{id}: sand, grass, or transparent sprite pixels are rejected by the gameplay mask");
         }
-        Check(Vector2.Distance(piece.WorldEntry, prototype.RiverPoints[0]) < 0.1f,
-            $"{id}: river begins at the TMJ southwest endpoint");
-        Check(Vector2.Distance(piece.WorldExit, prototype.RiverPoints[prototype.RiverPoints.Length - 1]) < 0.1f,
-            $"{id}: river ends at the TMJ northeast endpoint");
+        RiverImagePiece referencePiece = layoutReferencePrefab != null
+            ? layoutReferencePrefab.GetComponentInChildren<RiverImagePiece>(true)
+            : null;
+        Check(referencePiece != null && Vector2.Distance(piece.WorldEntry, referencePiece.WorldEntry) < 0.1f,
+            $"{id}: river entry matches the current authored SimpleSmall layout");
+        Check(referencePiece != null && Vector2.Distance(piece.WorldExit, referencePiece.WorldExit) < 0.1f,
+            $"{id}: river exit matches the current authored SimpleSmall layout");
 
         Transform lake = root.transform.Find("Water/Lake_" + prototype.Lake.Name);
         Check(lake != null && Vector2.Distance(lake.position, prototype.Lake.Position) < 0.01f,
@@ -368,8 +375,13 @@ public static class LevelPrefabRuntimeValidation
         }
 
         Transform oldTree = root.transform.Find("Landmarks/OldTree");
-        Check(oldTree != null && Vector2.Distance(oldTree.position, new Vector2(48f, 34f)) < 0.01f,
-            $"{id}: OldTree landmark is centered at (48, 34)");
+        Transform referenceOldTree = layoutReferencePrefab != null
+            ? layoutReferencePrefab.transform.Find("Landmarks/OldTree")
+            : null;
+        Check(oldTree != null
+            && referenceOldTree != null
+            && Vector2.Distance(oldTree.position, referenceOldTree.position) < 0.01f,
+            $"{id}: OldTree landmark matches the current authored SimpleSmall layout");
 
         RiverCollector[] collectors = root.GetComponentsInChildren<RiverCollector>(true);
         bool layersCorrect = true;
@@ -429,10 +441,10 @@ public static class LevelPrefabRuntimeValidation
 
         Check(material.shader != null && material.shader.name == "FallenLeaves/TreeCursorFade",
             "TreeCursorFade material uses the tree-only cursor fade shader");
-        Check(Mathf.Approximately(material.GetFloat("_InnerRadius"), 35f)
-            && Mathf.Approximately(material.GetFloat("_OuterRadius"), 60f)
+        Check(Mathf.Approximately(material.GetFloat("_InnerRadius"), 45f)
+            && Mathf.Approximately(material.GetFloat("_OuterRadius"), 75f)
             && Mathf.Approximately(material.GetFloat("_MinimumOpacity"), 0.25f),
-            "TreeCursorFade material keeps the 35/60 pixel radii and 25 percent center opacity");
+            "TreeCursorFade material keeps the 45/75 pixel radii and 25 percent center opacity");
 
         bool allTreesUseSharedMaterial = true;
         bool allTreesAreDropSources = true;
@@ -484,8 +496,11 @@ public static class LevelPrefabRuntimeValidation
         Check(otherMaterialsUntouched, $"{id}: non-tree placed objects exclude the cursor fade material");
 
         LeafSpawner spawner = root.GetComponentInChildren<LeafSpawner>(true);
-        Check(spawner != null && spawner.TreeSourceCount == 11,
-            $"{id}: LeafSpawner discovers all 11 trees across obstacle, decoration, and landmark groups");
+        int expectedTreeSources = layoutReferencePrefab != null
+            ? layoutReferencePrefab.GetComponentsInChildren<LeafDropSource>(true).Length
+            : 0;
+        Check(spawner != null && spawner.TreeSourceCount == expectedTreeSources,
+            $"{id}: LeafSpawner discovers all {expectedTreeSources} trees in the current authored SimpleSmall layout");
         ValidateMovableTreeSource(root, "Obstacles", id);
         ValidateMovableTreeSource(root, "Decorations", id);
         ValidateMovableTreeSource(root, "Landmarks", id);
@@ -785,15 +800,20 @@ public static class LevelPrefabRuntimeValidation
 
         InvokePrivate(flow, "StartLevel", LevelId.SimpleSmall);
         LevelRoot firstSimple = LevelLoader.Current;
-        CompleteInitialSpawn(firstSimple);
         if (firstSimple != null) unloadedLevels.Add(firstSimple);
 
         Check(firstSimple != null && firstSimple.Id == LevelId.SimpleSmall,
             "GameFlow starts SimpleSmall through LevelLoader");
+        ValidateAndCompleteLevelIntro(
+            flow,
+            firstSimple,
+            "把落叶吹进河里",
+            "00:00",
+            "SimpleSmall");
         Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.Playing,
-            "GameFlow enters Playing state after level selection");
+            "GameFlow enters Playing only after the SimpleSmall intro completes");
         Check(GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.Playing,
-            "UIRouter shows the gameplay HUD after level selection");
+            "UIRouter keeps the gameplay HUD after the SimpleSmall intro completes");
         if (firstSimple == null) return;
 
         CheckRunReset(flow, firstSimple, "Starting a level");
@@ -874,12 +894,15 @@ public static class LevelPrefabRuntimeValidation
         SettingsUI settings = GetPrivateField<SettingsUI>(flow, "settings");
         Check(flow.SettingsOpen && !flow.ShopOpen && settings.IsVisible && !shop.IsVisible,
             "Pause settings and shop overlays remain mutually exclusive");
+        ValidateSettingsLayout(settings, true);
         InvokePrivate(flow, "Update");
         Check(Mathf.Approximately(Time.timeScale, 0f), "Pause settings stop gameplay time");
 
-        InvokePrivate(flow, "ToggleSettings");
+        GetPrivateField<RectTransform>(settings, "resumeButtonRect")
+            .GetComponent<Button>().onClick.Invoke();
         InvokePrivate(flow, "Update");
-        Check(!flow.SettingsOpen && Mathf.Approximately(Time.timeScale, 1f), "Closing settings resumes gameplay time");
+        Check(!flow.SettingsOpen && !settings.IsVisible && Mathf.Approximately(Time.timeScale, 1f),
+            "The lower-right Resume button closes settings and resumes gameplay time");
 
         InvokePrivate(flow, "EndGame", true);
         Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.Result,
@@ -897,10 +920,15 @@ public static class LevelPrefabRuntimeValidation
 
         InvokePrivate(flow, "StartLevel", LevelId.SimpleSmall);
         LevelRoot replayedSimple = LevelLoader.Current;
-        CompleteInitialSpawn(replayedSimple);
         if (replayedSimple != null) unloadedLevels.Add(replayedSimple);
         Check(replayedSimple != null && replayedSimple != firstSimple,
             "Replay replaces the old level with a fresh prefab instance");
+        ValidateAndCompleteLevelIntro(
+            flow,
+            replayedSimple,
+            "把落叶吹进河里",
+            "00:00",
+            "SimpleSmall replay");
         CheckRunReset(flow, replayedSimple, "Replay");
 
         if (replayedSimple != null)
@@ -957,8 +985,13 @@ public static class LevelPrefabRuntimeValidation
 
         InvokePrivate(flow, "StartLevel", LevelId.TimedChallenge);
         LevelRoot timed = LevelLoader.Current;
-        CompleteInitialSpawn(timed);
         if (timed != null) unloadedLevels.Add(timed);
+        ValidateAndCompleteLevelIntro(
+            flow,
+            timed,
+            "三分限时\n把更多的叶子吹入河里吧",
+            "03:00",
+            "TimedChallenge");
         CheckRunReset(flow, timed, "Changing levels");
         ValidateHudTimer(flow, true, "03:00");
 
@@ -995,8 +1028,13 @@ public static class LevelPrefabRuntimeValidation
 
         InvokePrivate(flow, "StartLevel", LevelId.Endless);
         LevelRoot endless = LevelLoader.Current;
-        CompleteInitialSpawn(endless);
         if (endless != null) unloadedLevels.Add(endless);
+        ValidateAndCompleteLevelIntro(
+            flow,
+            endless,
+            "不要让落叶条掉空",
+            "00:00",
+            "Endless");
         CheckRunReset(flow, endless, "Starting Endless");
         ValidateEndlessHud(flow);
 
@@ -1040,8 +1078,13 @@ public static class LevelPrefabRuntimeValidation
 
         InvokePrivate(flow, "StartLevel", LevelId.TimedChallenge);
         LevelRoot timedReplay = LevelLoader.Current;
-        CompleteInitialSpawn(timedReplay);
         if (timedReplay != null) unloadedLevels.Add(timedReplay);
+        ValidateAndCompleteLevelIntro(
+            flow,
+            timedReplay,
+            "三分限时\n把更多的叶子吹入河里吧",
+            "03:00",
+            "TimedChallenge replay");
         CheckRunReset(flow, timedReplay, "Restarting TimedChallenge");
         SetPrivateField(flow, "elapsedTime", 180f);
         HudUI timedHud = GetPrivateField<HudUI>(flow, "hud");
@@ -1061,6 +1104,184 @@ public static class LevelPrefabRuntimeValidation
             && GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.MainMenu
             && GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.MainMenu,
             "Returning to main menu unloads gameplay and restores main UI state");
+
+        InvokePrivate(flow, "OpenMenuSettings");
+        Check(flow.SettingsOpen && settings.IsVisible,
+            "Main-menu settings opens the shared pause settings panel");
+        ValidateSettingsLayout(settings, false);
+        GetPrivateField<RectTransform>(settings, "resumeButtonRect")
+            .GetComponent<Button>().onClick.Invoke();
+        Check(!flow.SettingsOpen && !settings.IsVisible,
+            "The lower-right Resume button closes main-menu settings");
+    }
+
+    private static void ValidateSettingsLayout(SettingsUI settings, bool gameplay)
+    {
+        InvokePrivate(settings, "Update");
+
+        RectTransform volumeLabel = GetPrivateField<RectTransform>(settings, "volumeLabelRect");
+        RectTransform volumeSlider = GetPrivateField<RectTransform>(settings, "volumeSliderRect");
+        RectTransform resumeButton = GetPrivateField<RectTransform>(settings, "resumeButtonRect");
+        RectTransform levelButton = GetPrivateField<RectTransform>(settings, "levelButtonRect");
+        RectTransform menuButton = GetPrivateField<RectTransform>(settings, "menuButtonRect");
+        GameObject levelButtonObject = GetPrivateField<GameObject>(settings, "levelButtonObject");
+        GameObject menuButtonObject = GetPrivateField<GameObject>(settings, "menuButtonObject");
+
+        Check(volumeLabel != null
+            && Vector2.Distance(volumeLabel.anchorMin, new Vector2(0.12f, 0.68f)) < 0.0001f
+            && Vector2.Distance(volumeLabel.anchorMax, new Vector2(0.28f, 0.78f)) < 0.0001f
+            && volumeSlider != null
+            && Vector2.Distance(volumeSlider.anchorMin, new Vector2(0.29f, 0.69f)) < 0.0001f
+            && Vector2.Distance(volumeSlider.anchorMax, new Vector2(0.86f, 0.77f)) < 0.0001f,
+            "Pause settings moves the volume row upward and widens its slider");
+
+        Check(HasFixedLayout(resumeButton, new Vector2(0.72f, 0.40f), new Vector2(88f, 88f))
+            && HasFixedLayout(levelButton, new Vector2(0.29f, 0.52f), new Vector2(205f, 70f))
+            && HasFixedLayout(menuButton, new Vector2(0.29f, 0.26f), new Vector2(205f, 70f)),
+            "Pause settings places Resume at lower right and navigation buttons in the left column without resizing them");
+
+        Check(resumeButton != null
+            && resumeButton.gameObject.activeSelf
+            && levelButtonObject != null
+            && menuButtonObject != null
+            && levelButtonObject.activeSelf == gameplay
+            && menuButtonObject.activeSelf == gameplay,
+            gameplay
+                ? "Gameplay settings shows both left navigation buttons and the lower-right Resume button"
+                : "Main-menu settings hides both left navigation buttons and keeps the lower-right Resume button");
+    }
+
+    private static bool HasFixedLayout(RectTransform rect, Vector2 anchor, Vector2 size)
+    {
+        return rect != null
+            && Vector2.Distance(rect.anchorMin, anchor) < 0.0001f
+            && Vector2.Distance(rect.anchorMax, anchor) < 0.0001f
+            && Vector2.Distance(rect.anchoredPosition, Vector2.zero) < 0.0001f
+            && Vector2.Distance(rect.sizeDelta, size) < 0.01f;
+    }
+
+    private static void ValidateAndCompleteLevelIntro(
+        GameFlowManager flow,
+        LevelRoot root,
+        string expectedPrompt,
+        string expectedHudTime,
+        string context)
+    {
+        LevelIntroUI intro = GetPrivateField<LevelIntroUI>(flow, "levelIntro");
+        UIRouter router = GetPrivateField<UIRouter>(flow, "router");
+        CanvasGroup introGroup = intro != null ? intro.GetComponent<CanvasGroup>() : null;
+        Text prompt = intro != null ? GetPrivateField<Text>(intro, "promptLabel") : null;
+        Image blackout = intro != null ? GetPrivateField<Image>(intro, "blackout") : null;
+
+        Check(root != null, $"{context}: a level root exists while its intro plays");
+        Check(intro != null
+            && intro.IsVisible
+            && introGroup != null
+            && introGroup.blocksRaycasts
+            && intro.PromptText == expectedPrompt
+            && !intro.PromptVisible
+            && Mathf.Approximately(intro.BlackAlpha, 0f),
+            $"{context}: the intro begins transparent, blocks input, and uses the exact prompt copy");
+        Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.LevelIntro
+            && Mathf.Approximately(Time.timeScale, 0f)
+            && Mathf.Approximately(GetPrivateField<float>(flow, "elapsedTime"), 0f)
+            && (root == null || root.WindBlower == null || !root.WindBlower.enabled),
+            $"{context}: gameplay time is frozen as soon as the intro begins");
+
+        InvokePrivate(flow, "ToggleShop");
+        InvokePrivate(flow, "ToggleSettings");
+        Check(!flow.ShopOpen && !flow.SettingsOpen,
+            $"{context}: shop and pause input are ignored throughout the intro");
+
+        Material writer = prompt != null ? prompt.material : null;
+        Material inverse = blackout != null ? blackout.material : null;
+        Check(prompt != null
+            && blackout != null
+            && prompt.transform.GetSiblingIndex() < blackout.transform.GetSiblingIndex()
+            && !prompt.raycastTarget
+            && blackout.raycastTarget
+            && writer != null
+            && writer.GetInt("_Stencil") == 1
+            && writer.GetInt("_StencilComp") == (int)UnityEngine.Rendering.CompareFunction.Always
+            && writer.GetInt("_StencilOp") == (int)UnityEngine.Rendering.StencilOp.Replace
+            && writer.GetInt("_ColorMask") == 0
+            && writer.GetInt("_UseUIAlphaClip") == 1
+            && writer.IsKeywordEnabled("UNITY_UI_ALPHACLIP")
+            && inverse != null
+            && inverse.GetInt("_Stencil") == 1
+            && inverse.GetInt("_StencilComp") == (int)UnityEngine.Rendering.CompareFunction.NotEqual
+            && inverse.GetInt("_StencilOp") == (int)UnityEngine.Rendering.StencilOp.Keep
+            && inverse.GetInt("_ColorMask") == (int)UnityEngine.Rendering.ColorWriteMask.All,
+            $"{context}: prompt and blackout materials form an ordered inverse stencil cutout");
+
+        float endlessValue = root != null ? root.EndlessSurvivalValue : 0f;
+        InvokePrivate(flow, "AdvanceLevelIntro", 0.175f);
+        Check(intro != null
+            && !intro.PromptVisible
+            && Mathf.Abs(intro.BlackAlpha - 0.5f) < 0.01f
+            && GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.LevelIntro,
+            $"{context}: the first 0.175 seconds reach a half-black screen without showing text");
+
+        InvokePrivate(flow, "AdvanceLevelIntro", 0.175f);
+        Check(intro != null
+            && intro.PromptVisible
+            && Mathf.Approximately(intro.BlackAlpha, 1f)
+            && Mathf.Approximately(intro.PromptScale, LevelIntroUI.InitialPromptScale)
+            && router.Current == UIRouter.State.Playing,
+            $"{context}: full blackout switches to the HUD and reveals the scene only through the prompt");
+
+        HudUI hud = GetPrivateField<HudUI>(flow, "hud");
+        InvokePrivate(hud, "Update");
+        Text timeLabel = GetPrivateField<Text>(hud, "timeLabel");
+        Check(timeLabel != null
+            && timeLabel.text == expectedHudTime
+            && Mathf.Approximately(GetPrivateField<float>(flow, "elapsedTime"), 0f)
+            && (root == null || Mathf.Approximately(root.EndlessSurvivalValue, endlessValue)),
+            $"{context}: HUD values remain at their initial values behind the cutout");
+
+        InvokePrivate(flow, "AdvanceLevelIntro", 0.60f);
+        Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.LevelIntro
+            && intro != null
+            && intro.PromptVisible
+            && Mathf.Approximately(intro.PromptScale, LevelIntroUI.InitialPromptScale),
+            $"{context}: an unready level holds the readable prompt instead of starting gameplay");
+
+        CompleteInitialSpawn(root);
+        InvokePrivate(flow, "AdvanceLevelIntro", 0f);
+        Check(root == null || root.WindBlower == null || !root.WindBlower.enabled,
+            $"{context}: wind input stays disabled after loading finishes but before the reveal ends");
+
+        InvokePrivate(flow, "AdvanceLevelIntro", 0.60f);
+        float halfScale = Mathf.LerpUnclamped(
+            LevelIntroUI.InitialPromptScale,
+            LevelIntroUI.FinalPromptScale,
+            0.5f * 0.5f * 0.5f);
+        Check(intro != null
+            && Mathf.Abs(intro.PromptScale - halfScale) < 0.01f
+            && Mathf.Approximately(intro.BlackAlpha, 1f),
+            $"{context}: reveal scale follows cubic acceleration and keeps the black field before 85 percent");
+
+        InvokePrivate(flow, "AdvanceLevelIntro", 0.51f);
+        float lateProgress = 0.925f;
+        float lateScale = Mathf.LerpUnclamped(
+            LevelIntroUI.InitialPromptScale,
+            LevelIntroUI.FinalPromptScale,
+            lateProgress * lateProgress * lateProgress);
+        Check(intro != null
+            && Mathf.Abs(intro.PromptScale - lateScale) < 0.02f
+            && Mathf.Abs(intro.BlackAlpha - 0.5f) < 0.02f,
+            $"{context}: the final 15 percent fades residual black while the prompt keeps accelerating");
+
+        InvokePrivate(flow, "AdvanceLevelIntro", 0.10f);
+        Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.Playing
+            && Mathf.Approximately(Time.timeScale, 1f)
+            && intro != null
+            && !intro.IsVisible
+            && Mathf.Approximately(intro.BlackAlpha, 0f)
+            && Mathf.Approximately(GetPrivateField<float>(flow, "elapsedTime"), 0f)
+            && (root == null || root.WindBlower == null || root.WindBlower.enabled)
+            && (root == null || Mathf.Approximately(root.EndlessSurvivalValue, endlessValue)),
+            $"{context}: gameplay starts once, fully uncovered, only after animation and loading complete");
     }
 
     private static void ValidateUpgradePrices()

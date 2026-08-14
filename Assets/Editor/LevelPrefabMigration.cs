@@ -317,8 +317,8 @@ public static class LevelPrefabMigration
             material.shader = shader;
         }
 
-        material.SetFloat("_InnerRadius", 35f);
-        material.SetFloat("_OuterRadius", 60f);
+        material.SetFloat("_InnerRadius", 45f);
+        material.SetFloat("_OuterRadius", 75f);
         material.SetFloat("_MinimumOpacity", 0.25f);
         EditorUtility.SetDirty(material);
         return material;
@@ -905,11 +905,11 @@ public static class LevelPrefabMigration
         {
             errors.Add("TreeCursorFade material is missing or uses the wrong shader");
         }
-        else if (!Mathf.Approximately(treeMaterial.GetFloat("_InnerRadius"), 35f)
-            || !Mathf.Approximately(treeMaterial.GetFloat("_OuterRadius"), 60f)
+        else if (!Mathf.Approximately(treeMaterial.GetFloat("_InnerRadius"), 45f)
+            || !Mathf.Approximately(treeMaterial.GetFloat("_OuterRadius"), 75f)
             || !Mathf.Approximately(treeMaterial.GetFloat("_MinimumOpacity"), 0.25f))
         {
-            errors.Add("TreeCursorFade material does not use the expected 35/60 pixel radii and 0.25 opacity");
+            errors.Add("TreeCursorFade material does not use the expected 45/75 pixel radii and 0.25 opacity");
         }
 
         for (int treeIndex = 1; treeIndex <= 9; treeIndex++)

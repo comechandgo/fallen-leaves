@@ -1,4 +1,5 @@
 using System.IO;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -6,26 +7,38 @@ using UnityEngine.SceneManagement;
 
 public static class LevelPrefabVisualCapture
 {
-    private const string LevelPath = "Assets/Prefabs/Levels/Level_SimpleSmall.prefab";
+    private static readonly CaptureSpec[] CaptureSpecs =
+    {
+        new CaptureSpec("SimpleSmall", "Assets/Prefabs/Levels/Level_SimpleSmall.prefab"),
+        new CaptureSpec("TimedChallenge", "Assets/Prefabs/Levels/Level_TimedChallenge.prefab"),
+        new CaptureSpec("Endless", "Assets/Prefabs/Levels/Level_Endless.prefab")
+    };
 
     [MenuItem("Tools/Fallen Leaves/Capture Level Prefab Overview")]
     public static void RunMenu()
     {
-        string path = CaptureOverview();
-        EditorUtility.DisplayDialog("Level overview captured", path, "OK");
+        string[] paths = CaptureAllOverviews();
+        EditorUtility.DisplayDialog("Level overviews captured", string.Join("\n", paths), "OK");
     }
 
     public static void RunBatch()
     {
-        string path = CaptureOverview();
-        Debug.Log($"Level prefab overview captured: {path}");
+        string[] paths = CaptureAllOverviews();
+        Debug.Log($"Level prefab overviews captured: {string.Join(", ", paths)}");
     }
 
-    private static string CaptureOverview()
+    private static string[] CaptureAllOverviews()
+    {
+        List<string> paths = new List<string>(CaptureSpecs.Length);
+        for (int i = 0; i < CaptureSpecs.Length; i++) paths.Add(CaptureOverview(CaptureSpecs[i]));
+        return paths.ToArray();
+    }
+
+    private static string CaptureOverview(CaptureSpec spec)
     {
         Scene previewScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        LevelRoot prefab = AssetDatabase.LoadAssetAtPath<LevelRoot>(LevelPath);
-        if (prefab == null) throw new FileNotFoundException("Missing generated level prefab", LevelPath);
+        LevelRoot prefab = AssetDatabase.LoadAssetAtPath<LevelRoot>(spec.LevelPath);
+        if (prefab == null) throw new FileNotFoundException("Missing generated level prefab", spec.LevelPath);
         LevelRoot instance = (PrefabUtility.InstantiatePrefab(prefab.gameObject, previewScene) as GameObject)?.GetComponent<LevelRoot>();
         if (instance == null) throw new IOException("Could not instantiate the generated level prefab for capture.");
 
@@ -57,8 +70,11 @@ public static class LevelPrefabVisualCapture
             string projectRoot = Directory.GetParent(Application.dataPath).FullName;
             string outputDirectory = Path.GetFullPath(Path.Combine(projectRoot, "..", "logs"));
             Directory.CreateDirectory(outputDirectory);
-            string outputPath = Path.Combine(outputDirectory, "level-prefab-overview.png");
-            File.WriteAllBytes(outputPath, image.EncodeToPNG());
+            string outputPath = Path.Combine(outputDirectory, $"level-prefab-overview-{spec.Name}.png");
+            byte[] png = image.EncodeToPNG();
+            File.WriteAllBytes(outputPath, png);
+            if (spec.Name == "SimpleSmall")
+                File.WriteAllBytes(Path.Combine(outputDirectory, "level-prefab-overview.png"), png);
             return outputPath;
         }
         finally
@@ -70,6 +86,18 @@ public static class LevelPrefabVisualCapture
             Object.DestroyImmediate(renderTexture);
             Object.DestroyImmediate(cameraObject);
             Object.DestroyImmediate(instance.gameObject);
+        }
+    }
+
+    private readonly struct CaptureSpec
+    {
+        public readonly string Name;
+        public readonly string LevelPath;
+
+        public CaptureSpec(string name, string levelPath)
+        {
+            Name = name;
+            LevelPath = levelPath;
         }
     }
 }

@@ -6,9 +6,14 @@ using UnityEngine.UI;
 // 自身不再画 UI（R1：所有 UI 走 UIBase / UGUI）。
 public class GameFlowManager : MonoBehaviour
 {
-    public enum GameState { MainMenu, LevelSelect, Playing, EndlessFailure, Result }
+    public enum GameState { MainMenu, LevelSelect, LevelIntro, Playing, EndlessFailure, Result }
+
+    private enum LevelIntroPhase { None, FadeToBlack, PromptHold, Reveal }
 
     private const float EndlessFailureDelay = 1f;
+    private const float LevelIntroFadeDuration = 0.35f;
+    private const float LevelIntroHoldDuration = 0.60f;
+    private const float LevelIntroRevealDuration = 1.20f;
 
     private GameState state = GameState.MainMenu;
     private LevelId selectedLevel = LevelId.SimpleSmall;
@@ -16,7 +21,9 @@ public class GameFlowManager : MonoBehaviour
     private float elapsedTime;
     private float timeLimitSeconds;
     private float endlessFailureElapsed;
+    private float levelIntroPhaseElapsed;
     private bool resultSucceeded = true;
+    private LevelIntroPhase levelIntroPhase;
 
     // R3：shopOpen / settingsOpen 唯一来源。HUD/Shop/Settings 都从这里读。
     public bool ShopOpen { get; private set; }
@@ -36,6 +43,7 @@ public class GameFlowManager : MonoBehaviour
     private ShopUI shop;
     private SettingsUI settings;
     private ResultUI result;
+    private LevelIntroUI levelIntro;
 
     private void Awake()
     {
@@ -66,6 +74,7 @@ public class GameFlowManager : MonoBehaviour
         shop        = AttachUI<ShopUI>(canvasRoot, "Shop");
         settings    = AttachUI<SettingsUI>(canvasRoot, "Settings");
         result      = AttachUI<ResultUI>(canvasRoot, "Result");
+        levelIntro  = AttachUI<LevelIntroUI>(canvasRoot, "LevelIntro");
 
         mainMenu.Init(
             () => router.Show(UIRouter.State.LevelSelect),
@@ -120,6 +129,7 @@ public class GameFlowManager : MonoBehaviour
         // 浮层默认隐藏
         shop.Hide();
         settings.Hide();
+        levelIntro.Hide();
     }
 
     private void EnsureEventSystem()
@@ -148,7 +158,13 @@ public class GameFlowManager : MonoBehaviour
 
     private void Update()
     {
-        if (state == GameState.Playing)
+        if (state == GameState.LevelIntro)
+        {
+            Time.timeScale = 0f;
+            LevelLoader.Tick(0f);
+            AdvanceLevelIntro(Time.unscaledDeltaTime);
+        }
+        else if (state == GameState.Playing)
         {
             if (Input.GetKeyDown(KeyCode.Tab))    ToggleShop();
             if (Input.GetKeyDown(KeyCode.Escape))
@@ -317,10 +333,17 @@ public class GameFlowManager : MonoBehaviour
 
     private void StartLevel(LevelId levelId)
     {
-        Time.timeScale = 1f;
+        if (state == GameState.LevelIntro) return;
+
+        Time.timeScale = 0f;
         selectedLevel = levelId;
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
+
+        state = GameState.LevelIntro;
+        levelIntroPhase = LevelIntroPhase.FadeToBlack;
+        levelIntroPhaseElapsed = 0f;
+        levelIntro.Begin(GetLevelIntroPrompt(levelId));
 
         RiverCollector.ResetRun();
         ResetWindRunState();
@@ -329,26 +352,93 @@ public class GameFlowManager : MonoBehaviour
         LevelRoot loadedLevel = LevelLoader.Load(levelId);
         if (loadedLevel == null)
         {
+            levelIntro.Complete();
+            levelIntroPhase = LevelIntroPhase.None;
+            levelIntroPhaseElapsed = 0f;
             timeLimitSeconds = 0f;
             state = GameState.LevelSelect;
             router.Show(UIRouter.State.LevelSelect);
+            Time.timeScale = 1f;
             return;
         }
 
         timeLimitSeconds = loadedLevel.TimeLimitSeconds;
         SetWindBlower(loadedLevel.WindBlower);
+        if (windBlower != null) windBlower.enabled = false;
         ApplyRuntimeUpgrades();
         elapsedTime = 0f;
         endlessFailureElapsed = 0f;
         resultSucceeded = true;
+    }
 
+    private void AdvanceLevelIntro(float unscaledDeltaTime)
+    {
+        if (state != GameState.LevelIntro || levelIntroPhase == LevelIntroPhase.None) return;
+
+        WindBlower introWind = GetWindBlower();
+        if (introWind != null) introWind.enabled = false;
+
+        float deltaTime = Mathf.Max(0f, unscaledDeltaTime);
+        levelIntroPhaseElapsed += deltaTime;
+
+        if (levelIntroPhase == LevelIntroPhase.FadeToBlack)
+        {
+            float progress = levelIntroPhaseElapsed / LevelIntroFadeDuration;
+            levelIntro.SetFadeToBlackProgress(progress);
+            if (progress < 1f) return;
+
+            levelIntroPhase = LevelIntroPhase.PromptHold;
+            levelIntroPhaseElapsed = 0f;
+            router.Show(UIRouter.State.Playing);
+            levelIntro.ShowPrompt();
+            return;
+        }
+
+        if (levelIntroPhase == LevelIntroPhase.PromptHold)
+        {
+            if (levelIntroPhaseElapsed < LevelIntroHoldDuration || !LevelLoader.IsReady) return;
+
+            levelIntroPhase = LevelIntroPhase.Reveal;
+            levelIntroPhaseElapsed = 0f;
+            levelIntro.SetRevealProgress(0f);
+            return;
+        }
+
+        float revealProgress = levelIntroPhaseElapsed / LevelIntroRevealDuration;
+        levelIntro.SetRevealProgress(revealProgress);
+        if (revealProgress < 1f || !LevelLoader.IsReady) return;
+
+        levelIntro.Complete();
+        levelIntroPhase = LevelIntroPhase.None;
+        levelIntroPhaseElapsed = 0f;
         state = GameState.Playing;
-        router.Show(UIRouter.State.Playing);
+
+        WindBlower current = GetWindBlower();
+        if (current != null) current.enabled = true;
+        Time.timeScale = 1f;
+    }
+
+    private static string GetLevelIntroPrompt(LevelId levelId)
+    {
+        switch (levelId)
+        {
+            case LevelId.SimpleSmall:
+                return "把落叶吹进河里";
+            case LevelId.TimedChallenge:
+                return "三分限时\n把更多的叶子吹入河里吧";
+            case LevelId.Endless:
+                return "不要让落叶条掉空";
+            default:
+                return string.Empty;
+        }
     }
 
     private void EndGame(bool success)
     {
         Time.timeScale = 0f;
+        levelIntro.Complete();
+        levelIntroPhase = LevelIntroPhase.None;
+        levelIntroPhaseElapsed = 0f;
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
         resultSucceeded = success;
@@ -386,6 +476,9 @@ public class GameFlowManager : MonoBehaviour
     private void ReturnToLevelSelect()
     {
         Time.timeScale = 1f;
+        levelIntro.Complete();
+        levelIntroPhase = LevelIntroPhase.None;
+        levelIntroPhaseElapsed = 0f;
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
 
@@ -401,6 +494,9 @@ public class GameFlowManager : MonoBehaviour
     private void ReturnToMainMenu()
     {
         Time.timeScale = 1f;
+        levelIntro.Complete();
+        levelIntroPhase = LevelIntroPhase.None;
+        levelIntroPhaseElapsed = 0f;
         ShopOpen = false; SettingsOpen = false;
         shop.Hide(); settings.Hide();
 
@@ -464,7 +560,7 @@ public class GameFlowManager : MonoBehaviour
 
     private string FormatHudTime()
     {
-        if (state == GameState.Playing && timeLimitSeconds > 0f)
+        if ((state == GameState.LevelIntro || state == GameState.Playing) && timeLimitSeconds > 0f)
         {
             return FormatTime(Mathf.Max(0f, timeLimitSeconds - elapsedTime));
         }

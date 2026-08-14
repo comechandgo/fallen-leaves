@@ -4,8 +4,8 @@ Shader "FallenLeaves/TreeCursorFade"
     {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
-        _InnerRadius ("Inner Radius (Pixels)", Range(0, 256)) = 35
-        _OuterRadius ("Outer Radius (Pixels)", Range(1, 384)) = 60
+        _InnerRadius ("Inner Radius (Pixels)", Range(0, 256)) = 45
+        _OuterRadius ("Outer Radius (Pixels)", Range(1, 384)) = 75
         _MinimumOpacity ("Minimum Opacity", Range(0, 1)) = 0.25
         [MaterialToggle] PixelSnap ("Pixel snap", Float) = 0
         [HideInInspector] _RendererColor ("Renderer Color", Color) = (1,1,1,1)
