@@ -120,8 +120,7 @@ public class GameFlowManager : MonoBehaviour
             () => FormatCoins(RiverCollector.CoinCount),
             () => RiverCollector.SessionLeafCount.ToString(),
             () => selectedLevel == LevelId.TimedChallenge,
-            () => selectedLevel == LevelId.Endless,
-            () => resultSucceeded);
+            () => selectedLevel == LevelId.Endless);
 
         router.Register(mainMenu, levelSelect, hud, result);
         router.Show(UIRouter.State.MainMenu);

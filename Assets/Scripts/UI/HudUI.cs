@@ -12,10 +12,16 @@ public class HudUI : UIBase
     private const float TimeBackgroundAlpha = 0.70f;
     private const float TimeContentAlpha = 0.85f;
     private const float SurvivalPopDuration = 0.18f;
+    private const float SurvivalBarWidth = 420f;
+    private const float SurvivalBarHeight = 32f;
+    private const float SurvivalPopOffset = 6f;
+    private const float SurvivalTrackAlpha = 0.82f;
 
-    private static readonly Color SurvivalHigh = new Color(0.24f, 0.78f, 0.43f, 1f);
-    private static readonly Color SurvivalMid = new Color(0.96f, 0.76f, 0.22f, 1f);
+    private static readonly Vector2 SurvivalBarPosition = new Vector2(0f, -12f);
+    private static readonly Color SurvivalNormal = Theme.LeafAmber;
+    private static readonly Color SurvivalTrack = new Color(Theme.Paper.r, Theme.Paper.g, Theme.Paper.b, SurvivalTrackAlpha);
     private static readonly Color SurvivalLow = new Color(0.91f, 0.25f, 0.20f, 1f);
+    private static Sprite survivalPillSprite;
 
     private System.Action onToggleSettings;
     private System.Action onToggleShop;
@@ -29,10 +35,12 @@ public class HudUI : UIBase
     private Text coinLabel;
     private RectTransform coinIconRect;
     private Text timeLabel;
+    private Text controlHintLabel;
     private RectTransform timeRect;
     private Image timeBackground;
     private Image timeIcon;
     private GameObject survivalBar;
+    private RectTransform survivalBarRect;
     private Image survivalBackground;
     private RectTransform survivalFillRect;
     private Image survivalFill;
@@ -64,6 +72,20 @@ public class HudUI : UIBase
     {
         RectTransform safe = CreateSafeArea(transform);
 
+        controlHintLabel = CreateText(
+            safe,
+            "左键吹树叶\n右键移动地图",
+            36,
+            TextAnchor.MiddleLeft,
+            Theme.TextDark);
+        controlHintLabel.name = "ControlHint";
+        controlHintLabel.raycastTarget = false;
+        RectTransform controlHintRect = controlHintLabel.rectTransform;
+        controlHintRect.anchorMin = controlHintRect.anchorMax = new Vector2(0f, 0.5f);
+        controlHintRect.pivot = new Vector2(0f, 0.5f);
+        controlHintRect.anchoredPosition = Vector2.zero;
+        controlHintRect.sizeDelta = new Vector2(360f, 110f);
+
         CreateImageButton(safe, "Pause", "", new Vector2(0f, 1f), new Vector2(120f, 69f),
             () => onToggleSettings?.Invoke(), "ggj/局内/设置暂停_正常.png", null, "ggj/局内/设置暂停_按下.png", new Vector2(0f, 1f));
 
@@ -91,22 +113,28 @@ public class HudUI : UIBase
         timeIcon = CreateImage(timeBox.transform, "TimeIcon", "ggj/结算/icon_沙漏.png",
             new Vector2(0.5f, 0.5f), new Vector2(32f, 42f));
 
-        survivalBar = CreatePanel(safe, "EndlessSurvivalBar", Vector2.one, new Vector2(210f, 22f));
-        RectTransform survivalRect = survivalBar.GetComponent<RectTransform>();
-        survivalRect.anchoredPosition = new Vector2(-132f, -120f);
+        survivalBar = CreatePanel(safe, "EndlessSurvivalBar", new Vector2(0.5f, 1f), new Vector2(SurvivalBarWidth, SurvivalBarHeight));
+        survivalBarRect = survivalBar.GetComponent<RectTransform>();
+        survivalBarRect.pivot = new Vector2(0.5f, 1f);
+        survivalBarRect.anchoredPosition = SurvivalBarPosition;
         survivalBackground = survivalBar.GetComponent<Image>();
-        survivalBackground.sprite = null;
-        survivalBackground.color = new Color(0.10f, 0.10f, 0.08f, 0.78f);
+        survivalBackground.sprite = GetSurvivalPillSprite();
+        survivalBackground.type = Image.Type.Sliced;
+        survivalBackground.color = SurvivalTrack;
+        survivalBackground.raycastTarget = false;
 
         GameObject fillObject = new GameObject("Fill", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         fillObject.transform.SetParent(survivalBar.transform, false);
         survivalFillRect = fillObject.GetComponent<RectTransform>();
         survivalFillRect.anchorMin = survivalFillRect.anchorMax = new Vector2(0f, 0.5f);
         survivalFillRect.pivot = new Vector2(0f, 0.5f);
-        survivalFillRect.anchoredPosition = new Vector2(3f, 0f);
-        survivalFillRect.sizeDelta = new Vector2(204f, 16f);
+        survivalFillRect.anchoredPosition = Vector2.zero;
+        survivalFillRect.sizeDelta = new Vector2(SurvivalBarWidth, SurvivalBarHeight);
         survivalFill = fillObject.GetComponent<Image>();
-        survivalFill.color = SurvivalHigh;
+        survivalFill.sprite = survivalBackground.sprite;
+        survivalFill.type = Image.Type.Sliced;
+        survivalFill.color = SurvivalNormal;
+        survivalFill.raycastTarget = false;
 
         ApplyTimeStyle(true);
     }
@@ -298,7 +326,7 @@ public class HudUI : UIBase
 
     private void UpdateSurvivalBar(float deltaTime)
     {
-        if (survivalBar == null || survivalFill == null || survivalFillRect == null) return;
+        if (survivalBar == null || survivalBarRect == null || survivalFill == null || survivalFillRect == null) return;
 
         bool endless = endlessModeProvider != null && endlessModeProvider();
         if (!endless)
@@ -309,7 +337,7 @@ public class HudUI : UIBase
 
         if (!survivalBar.activeSelf) survivalBar.SetActive(true);
         float ratio = survivalRatioProvider != null ? Mathf.Clamp01(survivalRatioProvider()) : 0f;
-        survivalFillRect.sizeDelta = new Vector2(204f * ratio, 16f);
+        survivalFillRect.sizeDelta = new Vector2(SurvivalBarWidth * ratio, SurvivalBarHeight);
 
         bool failing = endlessFailureProvider != null && endlessFailureProvider();
         Color color;
@@ -327,15 +355,58 @@ public class HudUI : UIBase
         }
         else
         {
-            color = ratio <= 0.5f ? SurvivalMid : SurvivalHigh;
+            color = SurvivalNormal;
         }
 
-        if (!failing) survivalBackground.color = new Color(0.10f, 0.10f, 0.08f, 0.78f);
+        if (!failing) survivalBackground.color = SurvivalTrack;
 
         survivalFill.color = color;
         survivalPopElapsed = Mathf.Min(SurvivalPopDuration, survivalPopElapsed + Mathf.Max(0f, deltaTime));
         float popRate = survivalPopElapsed / SurvivalPopDuration;
-        float popScale = 1f + Mathf.Sin(popRate * Mathf.PI) * 0.28f;
-        survivalFillRect.localScale = new Vector3(1f, popScale, 1f);
+        float popOffset = Mathf.Sin(popRate * Mathf.PI) * SurvivalPopOffset;
+        survivalBarRect.anchoredPosition = SurvivalBarPosition + Vector2.up * popOffset;
+    }
+
+    private static Sprite GetSurvivalPillSprite()
+    {
+        if (survivalPillSprite != null) return survivalPillSprite;
+
+        const int width = 64;
+        const int height = 32;
+        const float radius = height * 0.5f;
+        const float segmentHalfLength = width * 0.5f - radius;
+        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        texture.name = "EndlessSurvivalPillTexture";
+        texture.filterMode = FilterMode.Bilinear;
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.hideFlags = HideFlags.HideAndDontSave;
+
+        Color32[] pixels = new Color32[width * height];
+        for (int y = 0; y < height; y++)
+        {
+            float localY = y + 0.5f - height * 0.5f;
+            for (int x = 0; x < width; x++)
+            {
+                float localX = x + 0.5f - width * 0.5f;
+                float closestX = Mathf.Clamp(localX, -segmentHalfLength, segmentHalfLength);
+                float distance = Mathf.Sqrt(Mathf.Pow(localX - closestX, 2f) + localY * localY) - radius;
+                byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(0.5f - distance) * 255f);
+                pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply(false, true);
+        survivalPillSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, width, height),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0u,
+            SpriteMeshType.FullRect,
+            new Vector4(radius, radius, radius, radius));
+        survivalPillSprite.name = "EndlessSurvivalPill";
+        survivalPillSprite.hideFlags = HideFlags.HideAndDontSave;
+        return survivalPillSprite;
     }
 }

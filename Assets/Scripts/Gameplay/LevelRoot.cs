@@ -109,6 +109,8 @@ public sealed class LevelRoot : MonoBehaviour
             if (windBlower != null) windBlower.enabled = true;
         }
 
+        if (leafSpawner != null) leafSpawner.TickOutOfBoundsRecovery(deltaTime);
+
         if (!endless) return;
 
         float safeDeltaTime = Mathf.Max(0f, deltaTime);

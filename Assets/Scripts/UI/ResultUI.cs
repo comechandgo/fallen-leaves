@@ -1,9 +1,11 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// 结算：使用结算素材，含用时、本局金币、剩余金币、限时模式树叶数和三个跳转按钮。
+// 结算：全屏等比覆盖底板，含用时、本局金币、剩余金币、限时模式树叶数和三个跳转按钮。
 public class ResultUI : UIBase
 {
+    private const float ResultBackgroundAspect = 1920f / 620f;
+
     private System.Action onReplay;
     private System.Action onLevelSelect;
     private System.Action onBackToMenu;
@@ -13,10 +15,9 @@ public class ResultUI : UIBase
     private System.Func<string> sessionLeafProvider;
     private System.Func<bool> timedModeProvider;
     private System.Func<bool> endlessModeProvider;
-    private System.Func<bool> successProvider;
 
-    private RectTransform panelRect;
-    private Image successImage;
+    private RectTransform backgroundRect;
+    private RectTransform contentRect;
     private Text resultTitleLabel;
     private Text timeLabel;
     private Text sessionLabel;
@@ -32,8 +33,7 @@ public class ResultUI : UIBase
                      System.Func<string> remainingCoinProvider,
                      System.Func<string> sessionLeafProvider,
                      System.Func<bool> timedModeProvider,
-                     System.Func<bool> endlessModeProvider,
-                     System.Func<bool> successProvider)
+                     System.Func<bool> endlessModeProvider)
     {
         this.onReplay = onReplay;
         this.onLevelSelect = onLevelSelect;
@@ -44,25 +44,27 @@ public class ResultUI : UIBase
         this.sessionLeafProvider = sessionLeafProvider;
         this.timedModeProvider = timedModeProvider;
         this.endlessModeProvider = endlessModeProvider;
-        this.successProvider = successProvider;
     }
 
     protected override void Build()
     {
         CreateFrostedBackdrop(transform);
+        CreateResultBackground();
 
         RectTransform safe = CreateSafeArea(transform);
-        Image panel = CreateImage(safe, "ResultPanel", "ggj/结算/弹窗.png", new Vector2(0.5f, 0.50f), new Vector2(1120f, 362f), false);
-        panelRect = panel.rectTransform;
-        Transform panelRoot = panel.transform;
+        GameObject content = new GameObject("ResultContent", typeof(RectTransform));
+        content.transform.SetParent(safe, false);
+        contentRect = content.GetComponent<RectTransform>();
+        contentRect.anchorMin = contentRect.anchorMax = new Vector2(0.5f, 0.5f);
+        contentRect.pivot = new Vector2(0.5f, 0.5f);
+        contentRect.sizeDelta = new Vector2(1120f, 362f);
+        Transform panelRoot = content.transform;
 
-        successImage = CreateImage(panelRoot, "Success", "ggj/结算/imh_清理成功.png", new Vector2(0.5f, 0.82f), new Vector2(450f, 106f));
-        resultTitleLabel = CreateText(panelRoot, "挑战失败", 48, TextAnchor.MiddleCenter, Theme.TextDark);
+        resultTitleLabel = CreateText(panelRoot, "挑战成功", 48, TextAnchor.MiddleCenter, Theme.TextDark);
         RectTransform titleRect = resultTitleLabel.rectTransform;
         titleRect.anchorMin = new Vector2(0f, 0.68f);
         titleRect.anchorMax = new Vector2(1f, 0.96f);
         titleRect.offsetMin = titleRect.offsetMax = Vector2.zero;
-        resultTitleLabel.enabled = false;
 
         timeIconRect = CreateImage(panelRoot, "TimeIcon", "ggj/结算/icon_沙漏.png", new Vector2(0.31f, 0.56f), new Vector2(32f, 42f)).rectTransform;
         goldIconRect = CreateImage(panelRoot, "GoldIcon", "ggj/结算/gold_绿.png", new Vector2(0.31f, 0.42f), new Vector2(34f, 34f)).rectTransform;
@@ -82,6 +84,28 @@ public class ResultUI : UIBase
         ApplyModeLayout(true);
     }
 
+    private void CreateResultBackground()
+    {
+        Image background = CreateImage(
+            transform,
+            "ResultBackground",
+            "ggj/结算/弹窗.png",
+            new Vector2(0.5f, 0.5f),
+            new Vector2(1920f, 620f),
+            false);
+        background.raycastTarget = false;
+        backgroundRect = background.rectTransform;
+        backgroundRect.anchoredPosition = Vector2.zero;
+
+        AspectRatioFitter fitter = background.gameObject.AddComponent<AspectRatioFitter>();
+        fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+        fitter.aspectRatio = background.sprite != null && background.sprite.rect.height > 0f
+            ? background.sprite.rect.width / background.sprite.rect.height
+            : ResultBackgroundAspect;
+        fitter.SetLayoutHorizontal();
+        fitter.SetLayoutVertical();
+    }
+
     private static Text MakeInfo(Transform parent, float topRatio)
     {
         Text t = CreateText(parent, "", 24, TextAnchor.MiddleLeft, Theme.TextDark);
@@ -98,13 +122,6 @@ public class ResultUI : UIBase
         bool timed = timedModeProvider != null && timedModeProvider();
         bool endless = endlessModeProvider != null && endlessModeProvider();
         ApplyModeLayout();
-        bool success = successProvider == null || successProvider();
-        if (successImage != null) successImage.enabled = success && !endless;
-        if (resultTitleLabel != null)
-        {
-            resultTitleLabel.enabled = !success || endless;
-            resultTitleLabel.text = endless ? "挑战结束" : "挑战失败";
-        }
 
         if (timeLabel != null && timeProvider != null)
         {
@@ -123,7 +140,7 @@ public class ResultUI : UIBase
 
     private void ApplyModeLayout(bool force = false)
     {
-        if (panelRect == null || timeLabel == null || sessionLabel == null
+        if (contentRect == null || timeLabel == null || sessionLabel == null
             || remainingLabel == null || leafLabel == null) return;
 
         bool timed = timedModeProvider != null && timedModeProvider();
@@ -133,7 +150,7 @@ public class ResultUI : UIBase
         appliedMode = mode;
 
         bool fourRows = timed || endless;
-        panelRect.sizeDelta = fourRows ? new Vector2(1120f, 430f) : new Vector2(1120f, 362f);
+        contentRect.sizeDelta = fourRows ? new Vector2(1120f, 430f) : new Vector2(1120f, 362f);
         leafLabel.enabled = fourRows;
 
         if (endless)

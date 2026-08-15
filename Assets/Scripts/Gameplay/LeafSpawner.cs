@@ -13,6 +13,10 @@ public sealed class LeafSpawner : MonoBehaviour
     [SerializeField, Min(1)] private int initialSpawnPerFrame = 64;
     [SerializeField] private Transform leafContainer;
 
+    [Header("Out-of-bounds recovery")]
+    [SerializeField, Min(0f)] private float outOfBoundsMargin = 2f;
+    [SerializeField, Min(0.02f)] private float recoveryCheckInterval = 0.25f;
+
     private readonly HashSet<LeafLifecycle> activeLeaves = new HashSet<LeafLifecycle>();
     private readonly Stack<LeafLifecycle> pooledLeaves = new Stack<LeafLifecycle>();
     private readonly List<LeafDropSource> treeSources = new List<LeafDropSource>(16);
@@ -22,6 +26,7 @@ public sealed class LeafSpawner : MonoBehaviour
     private int treeQuotaRemainderUnits;
     private int pendingInitialLeaves;
     private int initialSpawnTarget;
+    private float recoveryCheckTimer;
 
     public int ActiveCount => activeLeaves.Count;
     public Rect WalkableBounds => walkableBounds;
@@ -55,6 +60,7 @@ public sealed class LeafSpawner : MonoBehaviour
         treeQuotaRemainderUnits = 0;
         pendingInitialLeaves = 0;
         initialSpawnTarget = 0;
+        recoveryCheckTimer = 0f;
         IsReady = true;
         EnsureContainer();
         EnsureFilter();
@@ -134,6 +140,17 @@ public sealed class LeafSpawner : MonoBehaviour
         return TryGetOrdinaryPosition(out position);
     }
 
+    internal void TickOutOfBoundsRecovery(float deltaTime)
+    {
+        if (activeLeaves.Count == 0) return;
+
+        recoveryCheckTimer += Mathf.Max(0f, deltaTime);
+        if (recoveryCheckTimer < Mathf.Max(0.02f, recoveryCheckInterval)) return;
+
+        recoveryCheckTimer = 0f;
+        RecoverOutOfBoundsLeaves();
+    }
+
     internal void Register(LeafLifecycle leaf)
     {
         if (leaf != null) activeLeaves.Add(leaf);
@@ -204,6 +221,43 @@ public sealed class LeafSpawner : MonoBehaviour
         if (windable != null) windable.ResetForSpawn();
 
         instance.Bind(this, nearTree);
+    }
+
+    private int RecoverOutOfBoundsLeaves()
+    {
+        float margin = Mathf.Max(0f, outOfBoundsMargin);
+        Rect recoveryBounds = new Rect(
+            walkableBounds.xMin - margin,
+            walkableBounds.yMin - margin,
+            walkableBounds.width + margin * 2f,
+            walkableBounds.height + margin * 2f);
+
+        int recovered = 0;
+        foreach (LeafLifecycle leaf in activeLeaves)
+        {
+            if (leaf == null || recoveryBounds.Contains(leaf.transform.position)) continue;
+            if (!TryGetRandomPosition(out Vector2 safePosition)) continue;
+
+            leaf.transform.position = safePosition;
+            Rigidbody2D body = leaf.GetComponent<Rigidbody2D>();
+            if (body != null) body.position = safePosition;
+
+            Windable windable = leaf.GetComponent<Windable>();
+            if (windable != null)
+            {
+                windable.ResetForSpawn();
+            }
+            else if (body != null)
+            {
+                body.velocity = Vector2.zero;
+                body.angularVelocity = 0f;
+            }
+
+            recovered++;
+        }
+
+        if (recovered > 0) Physics2D.SyncTransforms();
+        return recovered;
     }
 
     private bool TryGetTreePosition(out Vector2 position)

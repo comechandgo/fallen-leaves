@@ -636,6 +636,8 @@ public static class LevelPrefabRuntimeValidation
         Check(nearTreeCount == Mathf.FloorToInt(expectedCount * 0.7f),
             $"{id}: exactly 70% of the initial leaves use tree-weighted spawn sampling ({nearTreeCount}/{expectedCount})");
 
+        ValidateOutOfBoundsRecovery(root, id, leaves);
+
         if (id == LevelId.SimpleSmall && leaves.Length > 0)
         {
             int before = root.ActiveLeafCount;
@@ -643,6 +645,52 @@ public static class LevelPrefabRuntimeValidation
             leaves[0].MarkCollected();
             Check(root.ActiveLeafCount == before - 1, $"{id}: duplicate leaf unregistration only decrements once");
         }
+    }
+
+    private static void ValidateOutOfBoundsRecovery(LevelRoot root, LevelId id, LeafLifecycle[] leaves)
+    {
+        LeafSpawner spawner = root.GetComponentInChildren<LeafSpawner>(true);
+        LeafLifecycle leaf = leaves.Length > 0 ? leaves[0] : null;
+        Rigidbody2D body = leaf != null ? leaf.GetComponent<Rigidbody2D>() : null;
+        Windable windable = leaf != null ? leaf.GetComponent<Windable>() : null;
+        Check(spawner != null && leaf != null && body != null && windable != null,
+            $"{id}: out-of-bounds recovery has a registered physics leaf to validate");
+        if (spawner == null || leaf == null || body == null || windable == null) return;
+
+        int activeBefore = root.ActiveLeafCount;
+        float coinsBefore = RiverCollector.CoinCount;
+        float sessionCoinsBefore = RiverCollector.SessionCoins;
+        int sessionLeavesBefore = RiverCollector.SessionLeafCount;
+        float margin = GetPrivateField<float>(spawner, "outOfBoundsMargin");
+        float interval = GetPrivateField<float>(spawner, "recoveryCheckInterval");
+        Vector2 outside = new Vector2(
+            root.MapBounds.xMax + margin + 1f,
+            root.MapBounds.yMax + margin + 1f);
+
+        body.position = outside;
+        leaf.transform.position = outside;
+        body.velocity = new Vector2(40f, 40f);
+        int recovered = (int)InvokePrivate(spawner, "RecoverOutOfBoundsLeaves");
+
+        Rect safeBounds = new Rect(
+            root.MapBounds.xMin + spawner.Clearance,
+            root.MapBounds.yMin + spawner.Clearance,
+            root.MapBounds.width - spawner.Clearance * 2f,
+            root.MapBounds.height - spawner.Clearance * 2f);
+        Vector2 recoveredPosition = leaf.transform.position;
+        Check(Mathf.Approximately(margin, 2f)
+            && Mathf.Approximately(interval, 0.25f)
+            && recovered == 1
+            && safeBounds.Contains(recoveredPosition)
+            && !IsBlockedSpawnPosition(recoveredPosition)
+            && body.velocity == Vector2.zero
+            && !windable.IsCollected,
+            $"{id}: a leaf beyond the map margin returns to a stationary safe land position");
+        Check(root.ActiveLeafCount == activeBefore
+            && Mathf.Approximately(RiverCollector.CoinCount, coinsBefore)
+            && Mathf.Approximately(RiverCollector.SessionCoins, sessionCoinsBefore)
+            && RiverCollector.SessionLeafCount == sessionLeavesBefore,
+            $"{id}: recovering an out-of-bounds leaf does not collect it or change run totals");
     }
 
     private static bool IsBlockedSpawnPosition(Vector2 position)
@@ -909,16 +957,23 @@ public static class LevelPrefabRuntimeValidation
             "Successful completion enters Result state");
         Check(GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.Result,
             "UIRouter shows the result panel");
+        Check(!GetPrivateField<HudUI>(flow, "hud").IsVisible,
+            "The gameplay HUD and its control hint hide on the result screen");
         ResultUI result = GetPrivateField<ResultUI>(flow, "result");
         InvokePrivate(result, "Update");
-        Check(GetPrivateField<Text>(result, "sessionLabel").text == "本局金币：360"
+        ValidateResultBackground(result);
+        ValidateResultButtons(result);
+        Check(ShowsChallengeSuccess(result)
+            && GetPrivateField<Text>(result, "sessionLabel").text == "本局金币：360"
             && GetPrivateField<Text>(result, "remainingLabel").text == "剩余金币：0"
             && !GetPrivateField<Text>(result, "leafLabel").enabled
-            && Vector2.Distance(GetPrivateField<RectTransform>(result, "panelRect").sizeDelta,
+            && Vector2.Distance(GetPrivateField<RectTransform>(result, "contentRect").sizeDelta,
                 new Vector2(1120f, 362f)) < 0.01f,
-            "Non-timed result keeps the three-row layout and hides the leaf total");
+            "Non-timed result shows Challenge Success in the fixed-size three-row content layout");
 
-        InvokePrivate(flow, "StartLevel", LevelId.SimpleSmall);
+        Button replayButton = FindResultButton(result, "Replay");
+        if (replayButton != null) replayButton.onClick.Invoke();
+        else InvokePrivate(flow, "StartLevel", LevelId.SimpleSmall);
         LevelRoot replayedSimple = LevelLoader.Current;
         if (replayedSimple != null) unloadedLevels.Add(replayedSimple);
         Check(replayedSimple != null && replayedSimple != firstSimple,
@@ -977,10 +1032,13 @@ public static class LevelPrefabRuntimeValidation
                 "GameFlow detects zero registered leaves and completes the level successfully");
         }
 
-        InvokePrivate(flow, "ReturnToLevelSelect");
+        Button levelSelectButton = FindResultButton(result, "LevelSelect");
+        if (levelSelectButton != null) levelSelectButton.onClick.Invoke();
+        else InvokePrivate(flow, "ReturnToLevelSelect");
         Check(LevelLoader.Current == null
             && GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.LevelSelect
-            && GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.LevelSelect,
+            && GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.LevelSelect
+            && !GetPrivateField<HudUI>(flow, "hud").IsVisible,
             "Returning to level select unloads gameplay and switches UI state");
 
         InvokePrivate(flow, "StartLevel", LevelId.TimedChallenge);
@@ -1011,16 +1069,18 @@ public static class LevelPrefabRuntimeValidation
 
             InvokePrivate(flow, "EndGame", false);
             InvokePrivate(result, "Update");
-            Check(GetPrivateField<Text>(result, "leafLabel").enabled
+            Check(ShowsChallengeSuccess(result)
+                && GetPrivateField<Text>(result, "leafLabel").enabled
                 && GetPrivateField<Text>(result, "leafLabel").text == "最终获得树叶：350"
-                && Vector2.Distance(GetPrivateField<RectTransform>(result, "panelRect").sizeDelta,
+                && Vector2.Distance(GetPrivateField<RectTransform>(result, "contentRect").sizeDelta,
                     new Vector2(1120f, 430f)) < 0.01f,
-                "Timed failure result shows the independent leaf total in the four-row layout");
+                "Timed failure still displays Challenge Success and the four-row result data");
             InvokePrivate(flow, "EndGame", true);
             InvokePrivate(result, "Update");
-            Check(GetPrivateField<Text>(result, "leafLabel").enabled
+            Check(ShowsChallengeSuccess(result)
+                && GetPrivateField<Text>(result, "leafLabel").enabled
                 && GetPrivateField<Text>(result, "leafLabel").text == "最终获得树叶：350",
-                "Timed success result also keeps the final leaf total visible");
+                "Timed success displays the same Challenge Success title and final leaf total");
         }
         Check(1920 - UpgradeCatalog.GetFormCost(WindForm.Surface)
                 - UpgradeCatalog.GetFormCost(WindForm.Tornado) == 1570,
@@ -1066,14 +1126,14 @@ public static class LevelPrefabRuntimeValidation
             InvokePrivate(result, "Update");
             Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.Result
                 && GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.Result
-                && GetPrivateField<Text>(result, "resultTitleLabel").text == "挑战结束"
+                && ShowsChallengeSuccess(result)
                 && GetPrivateField<Text>(result, "timeLabel").text == "坚持时间：" + FormatTimeForValidation(lockedTime)
                 && GetPrivateField<Text>(result, "leafLabel").text == "入河树叶：0"
                 && GetPrivateField<Text>(result, "sessionLabel").text == "本局金币：0"
                 && GetPrivateField<Text>(result, "remainingLabel").text == "剩余金币：0"
-                && Vector2.Distance(GetPrivateField<RectTransform>(result, "panelRect").sizeDelta,
+                && Vector2.Distance(GetPrivateField<RectTransform>(result, "contentRect").sizeDelta,
                     new Vector2(1120f, 430f)) < 0.01f,
-                "Endless waits a full unscaled second, then shows the four requested result rows without a best score");
+                "Endless waits a full unscaled second, then shows Challenge Success and four result rows");
         }
 
         InvokePrivate(flow, "StartLevel", LevelId.TimedChallenge);
@@ -1094,15 +1154,22 @@ public static class LevelPrefabRuntimeValidation
         InvokePrivate(result, "Update");
         Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.Result
             && !GetPrivateField<bool>(flow, "resultSucceeded")
-            && timerReachedZero
+            && timerReachedZero,
+            "TimedChallenge reaches 00:00 and preserves its failed gameplay result after 180 seconds");
+        Check(ShowsChallengeSuccess(result),
+            "Automatic TimedChallenge failure displays the shared Challenge Success title");
+        Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.Result
             && GetPrivateField<Text>(result, "timeLabel").text == "用时：03:00"
             && GetPrivateField<Text>(result, "leafLabel").text == "最终获得树叶：0",
-            "TimedChallenge reaches 00:00, fails after 180 seconds, and reports zero collected leaves");
+            "TimedChallenge failure reports the locked duration and zero collected leaves");
 
-        InvokePrivate(flow, "ReturnToMainMenu");
+        Button mainMenuButton = FindResultButton(result, "MainMenu");
+        if (mainMenuButton != null) mainMenuButton.onClick.Invoke();
+        else InvokePrivate(flow, "ReturnToMainMenu");
         Check(LevelLoader.Current == null
             && GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.MainMenu
-            && GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.MainMenu,
+            && GetPrivateField<UIRouter>(flow, "router").Current == UIRouter.State.MainMenu
+            && !GetPrivateField<HudUI>(flow, "hud").IsVisible,
             "Returning to main menu unloads gameplay and restores main UI state");
 
         InvokePrivate(flow, "OpenMenuSettings");
@@ -1113,6 +1180,87 @@ public static class LevelPrefabRuntimeValidation
             .GetComponent<Button>().onClick.Invoke();
         Check(!flow.SettingsOpen && !settings.IsVisible,
             "The lower-right Resume button closes main-menu settings");
+    }
+
+    private static void ValidateResultBackground(ResultUI result)
+    {
+        RectTransform background = GetPrivateField<RectTransform>(result, "backgroundRect");
+        RectTransform content = GetPrivateField<RectTransform>(result, "contentRect");
+        Check(background != null && content != null && !content.IsChildOf(background),
+            "Result background and fixed-size content use independent sibling layouts");
+        if (background == null) return;
+
+        Image image = background.GetComponent<Image>();
+        AspectRatioFitter fitter = background.GetComponent<AspectRatioFitter>();
+        const float expectedAspect = 1920f / 620f;
+        Check(image != null
+            && image.sprite != null
+            && !image.raycastTarget
+            && fitter != null
+            && fitter.aspectMode == AspectRatioFitter.AspectMode.EnvelopeParent
+            && Mathf.Abs(fitter.aspectRatio - expectedAspect) < 0.0001f,
+            "Result panel artwork keeps its 1920:620 aspect and uses centered EnvelopeParent cover");
+
+        Canvas.ForceUpdateCanvases();
+        RectTransform viewport = background.parent as RectTransform;
+        Vector2 viewportSize = viewport != null ? viewport.rect.size : Vector2.zero;
+        Vector2 backgroundSize = background.rect.size;
+        bool coversActiveViewport = viewportSize.x > 0f
+            && viewportSize.y > 0f
+            && backgroundSize.x + 0.1f >= viewportSize.x
+            && backgroundSize.y + 0.1f >= viewportSize.y
+            && backgroundSize.y > 0f
+            && Mathf.Abs(backgroundSize.x / backgroundSize.y - expectedAspect) < 0.0001f
+            && Vector2.Distance(background.anchorMin, Vector2.zero) < 0.0001f
+            && Vector2.Distance(background.anchorMax, Vector2.one) < 0.0001f
+            && Vector2.Distance(background.pivot, new Vector2(0.5f, 0.5f)) < 0.0001f
+            && Vector2.Distance(background.anchoredPosition, Vector2.zero) < 0.01f;
+        Check(coversActiveViewport,
+            $"Result background is centered, undistorted, and covers the active viewport without gaps "
+            + $"(viewport={viewportSize.x:0.##}x{viewportSize.y:0.##}, "
+            + $"background={backgroundSize.x:0.##}x{backgroundSize.y:0.##})");
+
+        ValidateResultCoverScenario(new Vector2(1920f, 1080f), expectedAspect, "1920x1080");
+        ValidateResultCoverScenario(new Vector2(1894f, 898f), expectedAspect, "1894x898");
+    }
+
+    private static void ValidateResultCoverScenario(Vector2 viewport, float aspect, string label)
+    {
+        Vector2 covered = viewport;
+        if (viewport.x / viewport.y > aspect) covered.y = viewport.x / aspect;
+        else covered.x = viewport.y * aspect;
+
+        Check(covered.x + 0.1f >= viewport.x
+            && covered.y + 0.1f >= viewport.y
+            && Mathf.Abs(covered.x / covered.y - aspect) < 0.0001f,
+            $"Result 1920:620 cover rule fills {label} without stretching or blank edges");
+    }
+
+    private static void ValidateResultButtons(ResultUI result)
+    {
+        Button replay = FindResultButton(result, "Replay");
+        Button levelSelect = FindResultButton(result, "LevelSelect");
+        Button mainMenu = FindResultButton(result, "MainMenu");
+        Check(replay != null
+            && levelSelect != null
+            && mainMenu != null
+            && Vector2.Distance(replay.GetComponent<RectTransform>().sizeDelta, new Vector2(205f, 70f)) < 0.01f
+            && Vector2.Distance(levelSelect.GetComponent<RectTransform>().sizeDelta, new Vector2(205f, 70f)) < 0.01f
+            && Vector2.Distance(mainMenu.GetComponent<RectTransform>().sizeDelta, new Vector2(205f, 70f)) < 0.01f,
+            "Result replay, level-select, and main-menu buttons keep their original visual size");
+    }
+
+    private static Button FindResultButton(ResultUI result, string name)
+    {
+        RectTransform content = GetPrivateField<RectTransform>(result, "contentRect");
+        Transform child = content != null ? content.Find(name) : null;
+        return child != null ? child.GetComponent<Button>() : null;
+    }
+
+    private static bool ShowsChallengeSuccess(ResultUI result)
+    {
+        Text title = GetPrivateField<Text>(result, "resultTitleLabel");
+        return title != null && title.enabled && title.text == "挑战成功";
     }
 
     private static void ValidateSettingsLayout(SettingsUI settings, bool gameplay)
@@ -1238,6 +1386,7 @@ public static class LevelPrefabRuntimeValidation
             && Mathf.Approximately(GetPrivateField<float>(flow, "elapsedTime"), 0f)
             && (root == null || Mathf.Approximately(root.EndlessSurvivalValue, endlessValue)),
             $"{context}: HUD values remain at their initial values behind the cutout");
+        ValidateHudControlHint(hud, context);
 
         InvokePrivate(flow, "AdvanceLevelIntro", 0.60f);
         Check(GetPrivateField<GameFlowManager.GameState>(flow, "state") == GameFlowManager.GameState.LevelIntro
@@ -1282,6 +1431,35 @@ public static class LevelPrefabRuntimeValidation
             && (root == null || root.WindBlower == null || root.WindBlower.enabled)
             && (root == null || Mathf.Approximately(root.EndlessSurvivalValue, endlessValue)),
             $"{context}: gameplay starts once, fully uncovered, only after animation and loading complete");
+    }
+
+    private static void ValidateHudControlHint(HudUI hud, string context)
+    {
+        Text hint = hud != null ? GetPrivateField<Text>(hud, "controlHintLabel") : null;
+        Text time = hud != null ? GetPrivateField<Text>(hud, "timeLabel") : null;
+        RectTransform rect = hint != null ? hint.rectTransform : null;
+        Check(hud != null
+            && hud.IsVisible
+            && hint != null
+            && hint.enabled
+            && hint.text == "左键吹树叶\n右键移动地图"
+            && hint.font != null
+            && time != null
+            && hint.font == time.font
+            && hint.fontSize == 36
+            && hint.fontStyle == FontStyle.Normal
+            && hint.alignment == TextAnchor.MiddleLeft
+            && Vector4.Distance(hint.color, Theme.TextDark) < 0.0001f
+            && !hint.raycastTarget
+            && hint.GetComponent<Image>() == null
+            && hint.GetComponent<Shadow>() == null
+            && rect != null
+            && Vector2.Distance(rect.anchorMin, new Vector2(0f, 0.5f)) < 0.0001f
+            && Vector2.Distance(rect.anchorMax, new Vector2(0f, 0.5f)) < 0.0001f
+            && Vector2.Distance(rect.pivot, new Vector2(0f, 0.5f)) < 0.0001f
+            && Vector2.Distance(rect.anchoredPosition, Vector2.zero) < 0.0001f
+            && Vector2.Distance(rect.sizeDelta, new Vector2(360f, 110f)) < 0.01f,
+            $"{context}: the two-line left-center control hint is plain, readable, and does not block input");
     }
 
     private static void ValidateUpgradePrices()
@@ -1372,18 +1550,78 @@ public static class LevelPrefabRuntimeValidation
         InvokePrivate(hud, "Update");
         RectTransform timeRect = GetPrivateField<RectTransform>(hud, "timeRect");
         GameObject survivalBar = GetPrivateField<GameObject>(hud, "survivalBar");
+        Image survivalBackground = GetPrivateField<Image>(hud, "survivalBackground");
         RectTransform fillRect = GetPrivateField<RectTransform>(hud, "survivalFillRect");
+        Image survivalFill = GetPrivateField<Image>(hud, "survivalFill");
         Text timeLabel = GetPrivateField<Text>(hud, "timeLabel");
+        RectTransform survivalRect = survivalBar != null ? survivalBar.GetComponent<RectTransform>() : null;
 
         Check(survivalBar != null
             && survivalBar.activeSelf
-            && Vector2.Distance(survivalBar.GetComponent<RectTransform>().sizeDelta, new Vector2(210f, 22f)) < 0.01f
-            && Vector2.Distance(survivalBar.GetComponent<RectTransform>().anchoredPosition, new Vector2(-132f, -120f)) < 0.01f
-            && Vector2.Distance(fillRect.sizeDelta, new Vector2(204f, 16f)) < 0.01f
+            && survivalRect != null
+            && Vector2.Distance(survivalRect.anchorMin, new Vector2(0.5f, 1f)) < 0.01f
+            && Vector2.Distance(survivalRect.anchorMax, new Vector2(0.5f, 1f)) < 0.01f
+            && Vector2.Distance(survivalRect.pivot, new Vector2(0.5f, 1f)) < 0.01f
+            && Vector2.Distance(survivalRect.sizeDelta, new Vector2(420f, 32f)) < 0.01f
+            && Vector2.Distance(survivalRect.anchoredPosition, new Vector2(0f, -12f)) < 0.01f
+            && survivalBackground != null
+            && survivalBackground.sprite != null
+            && survivalBackground.sprite.name == "EndlessSurvivalPill"
+            && survivalBackground.type == Image.Type.Sliced
+            && !survivalBackground.raycastTarget
+            && Vector4.Distance(survivalBackground.color,
+                new Color(Theme.Paper.r, Theme.Paper.g, Theme.Paper.b, 0.82f)) < 0.0001f
+            && fillRect != null
+            && Vector2.Distance(fillRect.sizeDelta, new Vector2(420f, 32f)) < 0.01f
+            && Vector2.Distance(fillRect.anchoredPosition, Vector2.zero) < 0.01f
+            && survivalFill != null
+            && survivalFill.sprite == survivalBackground.sprite
+            && survivalFill.type == Image.Type.Sliced
+            && !survivalFill.raycastTarget
+            && Vector4.Distance(survivalFill.color, Theme.LeafAmber) < 0.0001f
+            && survivalBar.transform.childCount == 1
             && Vector2.Distance(timeRect.sizeDelta, new Vector2(210f, 42f)) < 0.01f
             && Vector2.Distance(timeRect.anchoredPosition, new Vector2(-132f, -70f)) < 0.01f
             && timeLabel.text == "00:00",
-            "Endless HUD stacks coins, elapsed time, and an unnamed 210x22 full survival bar at top right");
+            "Endless HUD shows an unnamed, borderless 420x32 amber pill bar at the safe-area top center");
+
+        if (survivalFill == null || fillRect == null || survivalBackground == null) return;
+
+        System.Func<float> originalRatioProvider = GetPrivateField<System.Func<float>>(hud, "survivalRatioProvider");
+        System.Func<bool> originalFailureProvider = GetPrivateField<System.Func<bool>>(hud, "endlessFailureProvider");
+        try
+        {
+            SetPrivateField(hud, "survivalRatioProvider", (System.Func<float>)(() => 0.5f));
+            SetPrivateField(hud, "endlessFailureProvider", (System.Func<bool>)(() => false));
+            InvokePrivate(hud, "UpdateSurvivalBar", 0f);
+            Check(Vector2.Distance(fillRect.sizeDelta, new Vector2(210f, 32f)) < 0.01f
+                && Vector4.Distance(survivalFill.color, Theme.LeafAmber) < 0.0001f,
+                "Endless survival fill keeps the theme amber color and represents 50% width accurately");
+
+            SetPrivateField(hud, "survivalRatioProvider", (System.Func<float>)(() => 0.25f));
+            InvokePrivate(hud, "UpdateSurvivalBar", 0f);
+            Color lowColor = survivalFill.color;
+            Check(Vector2.Distance(fillRect.sizeDelta, new Vector2(105f, 32f)) < 0.01f
+                && Mathf.Approximately(lowColor.r, 0.91f)
+                && Mathf.Approximately(lowColor.g, 0.25f)
+                && Mathf.Approximately(lowColor.b, 0.20f),
+                "Endless survival fill switches to the red warning state at 25%");
+
+            SetPrivateField(hud, "survivalRatioProvider", (System.Func<float>)(() => 0f));
+            SetPrivateField(hud, "endlessFailureProvider", (System.Func<bool>)(() => true));
+            InvokePrivate(hud, "UpdateSurvivalBar", 0f);
+            Check(Mathf.Approximately(fillRect.sizeDelta.x, 0f)
+                && Mathf.Approximately(survivalBackground.color.r, 0.91f)
+                && Mathf.Approximately(survivalBackground.color.g, 0.25f)
+                && Mathf.Approximately(survivalBackground.color.b, 0.20f),
+                "Endless failure leaves an empty bar and flashes the pill track red");
+        }
+        finally
+        {
+            SetPrivateField(hud, "survivalRatioProvider", originalRatioProvider);
+            SetPrivateField(hud, "endlessFailureProvider", originalFailureProvider);
+            InvokePrivate(hud, "UpdateSurvivalBar", 0f);
+        }
     }
 
     private static string FormatTimeForValidation(float seconds)
